@@ -207,11 +207,12 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             case opts::threading::await_strategy::sync_stream:
                 return await_strategy::sync_stream;
             case opts::threading::await_strategy::callback:
+                return await_strategy::tbb_callback;
             case opts::threading::await_strategy::poll:
             case opts::threading::await_strategy::defer_sync_event:
             case opts::threading::await_strategy::defer_sync_stream:
                 throw std::invalid_argument(
-                    "Suspending await strategies are not supported");
+                    "Unsupported await strategy");
             default:
                 throw std::invalid_argument("Unknown await strategy");
         }
