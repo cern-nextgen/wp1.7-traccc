@@ -38,7 +38,7 @@ add_library( traccc_examples_cuda STATIC
    "device_config.hpp"
    "device_config.cpp")
 target_link_libraries( traccc_examples_cuda
-   PUBLIC TBB::tbb CUDA::cudart vecmem::core vecmem::cuda detray::core detray::detectors
+   PUBLIC Boost::fiber TBB::tbb CUDA::cudart vecmem::core vecmem::cuda detray::core detray::detectors
           traccc::core traccc::device_common traccc::cuda_utils traccc::cuda
           traccc_examples_common )
 
@@ -53,3 +53,10 @@ traccc_add_executable( throughput_mt_cuda "throughput_mt.cpp"
                   detray::detectors detray::io traccc::io traccc::performance
                   traccc::core traccc::device_common traccc::cuda_utils traccc::cuda
                   traccc::options traccc_examples_cuda )
+
+traccc_add_executable( throughput_mt_cuda_fiber "throughput_mt.cpp"
+   LINK_LIBRARIES indicators::indicators TBB::tbb Boost::fiber vecmem::core vecmem::cuda
+                  detray::detectors detray::io traccc::io traccc::performance
+                  traccc::core traccc::device_common traccc::cuda_utils traccc::cuda
+                  traccc::options traccc_examples_cuda )
+target_compile_definitions(traccc_throughput_mt_cuda_fiber PRIVATE "TRACCC_THROUGHPUT_MT_BOOST_FIBER")
