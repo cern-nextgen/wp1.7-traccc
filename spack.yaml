@@ -18,6 +18,7 @@ spack:
     - "alpaka"
     - "boost@1.85.0: +log+program_options"
     - "indicators"
+    - "stdexec"
     # SYCL dependencies
     - "intel-oneapi-dpl"
     # Examples and test dependencies
