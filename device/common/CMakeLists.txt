@@ -86,4 +86,4 @@ traccc_add_library( traccc_device_common device_common
    "include/traccc/fitting/device/impl/fill_fitting_sort_keys.ipp"
    )
 target_link_libraries( traccc_device_common
-   PUBLIC traccc::core vecmem::core )
+   PUBLIC traccc::core vecmem::core STDEXEC::stdexec )
