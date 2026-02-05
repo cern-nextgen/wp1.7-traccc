@@ -4,27 +4,28 @@
 #
 # Mozilla Public License Version 2.0
 
-traccc_add_executable( seeding_example "seeding_example.cpp"
-   LINK_LIBRARIES vecmem::core traccc::core traccc::io
-   traccc::performance traccc::options detray::detectors detray::io
-   traccc_examples_common )
-
-traccc_add_executable( seq_example "seq_example.cpp"
-   LINK_LIBRARIES vecmem::core traccc::core traccc::io
-   traccc::performance traccc::options detray::detectors detray::io
-   traccc_examples_common )
-
-traccc_add_executable( truth_finding_example "truth_finding_example.cpp"
-   LINK_LIBRARIES vecmem::core detray::detectors traccc::core traccc::io
-   traccc::performance traccc::options traccc_examples_common )
-
-traccc_add_executable( truth_fitting_example "truth_fitting_example.cpp"
-   LINK_LIBRARIES vecmem::core detray::io detray::detectors traccc::core
-   traccc::io traccc::performance traccc::options traccc_examples_common )
-
-traccc_add_executable( misaligned_truth_fitting_example "misaligned_truth_fitting_example.cpp"
-   LINK_LIBRARIES vecmem::core detray::io detray::detectors traccc::core
-   traccc::io traccc::performance traccc::options traccc_examples_common )
+# Disable examples for now
+# traccc_add_executable( seeding_example "seeding_example.cpp"
+#    LINK_LIBRARIES vecmem::core traccc::core traccc::io
+#    traccc::performance traccc::options detray::detectors detray::io
+#    traccc_examples_common )
+#
+# traccc_add_executable( seq_example "seq_example.cpp"
+#    LINK_LIBRARIES vecmem::core traccc::core traccc::io
+#    traccc::performance traccc::options detray::detectors detray::io
+#    traccc_examples_common )
+#
+# traccc_add_executable( truth_finding_example "truth_finding_example.cpp"
+#    LINK_LIBRARIES vecmem::core detray::detectors traccc::core traccc::io
+#    traccc::performance traccc::options traccc_examples_common )
+#
+# traccc_add_executable( truth_fitting_example "truth_fitting_example.cpp"
+#    LINK_LIBRARIES vecmem::core detray::io detray::detectors traccc::core
+#    traccc::io traccc::performance traccc::options traccc_examples_common )
+#
+# traccc_add_executable( misaligned_truth_fitting_example "misaligned_truth_fitting_example.cpp"
+#    LINK_LIBRARIES vecmem::core detray::io detray::detectors traccc::core
+#    traccc::io traccc::performance traccc::options traccc_examples_common )
 
 #
 # Set up the "throughput applications".
