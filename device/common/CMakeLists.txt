@@ -36,6 +36,7 @@ traccc_add_library( traccc_device_common device_common
    "include/traccc/clusterization/device/ccl_kernel.hpp"
    "include/traccc/clusterization/device/sorting_index_filler.hpp"
    "include/traccc/clusterization/device/clusterization_algorithm.hpp"
+   "include/traccc/clusterization/device/clusterization_kernel_payload.hpp"
    "src/clusterization/clusterization_algorithm.cpp"
    # Spacepoint binning function(s).
    "include/traccc/seeding/device/count_grid_capacities.hpp"
