@@ -208,8 +208,9 @@ full_chain_algorithm::output_type full_chain_algorithm::operator()(
         // Run the seed-finding (asynchronously).
         const auto spacepoints =
             co_await m_spacepoint_formation(m_device_detector, measurements);
+        const auto seeds = co_await m_seeding(spacepoints);
         const auto track_params = co_await m_track_parameter_estimation(
-            m_field, measurements, spacepoints, m_seeding(spacepoints));
+            m_field, measurements, spacepoints, seeds);
 
         // Run the track finding (asynchronously).
         const finding_algorithm::output_type track_candidates =
@@ -260,8 +261,9 @@ full_chain_algorithm::seeding(
         // Run the seed-finding (asynchronously).
         const auto spacepoints =
             co_await m_spacepoint_formation(m_device_detector, measurements);
+        const auto seeds = co_await m_seeding(spacepoints);
         const auto track_params = co_await m_track_parameter_estimation(
-            m_field, measurements, spacepoints, m_seeding(spacepoints));
+            m_field, measurements, spacepoints, seeds);
 
         // Copy a limited amount of result data back to the host.
         const auto host_seeds = m_copy.to(track_params, m_cached_pinned_host_mr,
