@@ -9,6 +9,7 @@
 
 // Local include(s).
 #include "traccc/device/algorithm_base.hpp"
+#include "traccc/seeding/device/seed_parameter_estimation_kernel_payload.hpp"
 
 // Project include(s)
 #include "traccc/bfield/magnetic_field.hpp"
@@ -20,6 +21,9 @@
 #include "traccc/utils/algorithm.hpp"
 #include "traccc/utils/memory_resource.hpp"
 #include "traccc/utils/messaging.hpp"
+
+// Stdexec include(s).
+#include <exec/task.hpp>
 
 namespace traccc::device {
 
@@ -73,30 +77,15 @@ struct seed_parameter_estimation_algorithm
     /// @{
 
     /// Payload for the @c estimate_seed_params_kernel function
-    struct estimate_seed_params_kernel_payload {
-        /// The number of seeds
-        edm::seed_collection::const_view::size_type n_seeds;
-        /// The track parameter estimation configuration
-        const track_params_estimation_config& config;
-        /// The magnetic field object
-        const magnetic_field& bfield;
-        /// All measurements of the event
-        const edm::measurement_collection<default_algebra>::const_view&
-            measurements;
-        /// All spacepoints of the event
-        const edm::spacepoint_collection::const_view& spacepoints;
-        /// The reconstructed track seeds of the event
-        const edm::seed_collection::const_view& seeds;
-        /// The output buffer for the bound track parameters
-        bound_track_parameters_collection_types::view& params;
-    };
+    using estimate_seed_params_kernel_payload =
+        struct traccc::device::estimate_seed_params_kernel_payload;
 
     /// Seed parameter estimation kernel launcher
     ///
     /// @param payload The payload for the kernel
     ///
     virtual void estimate_seed_params_kernel(
-        const struct estimate_seed_params_kernel_payload& payload) const = 0;
+        const estimate_seed_params_kernel_payload& payload) const = 0;
 
     /// @}
 
