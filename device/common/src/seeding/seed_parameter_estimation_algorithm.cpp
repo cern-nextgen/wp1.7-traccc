@@ -49,7 +49,7 @@ auto seed_parameter_estimation_algorithm::operator()(
 
     // If there are no seeds, return right away.
     if (n_seeds == 0) {
-        return {};
+        co_return {};
     }
 
     // Set up the output buffer.
@@ -61,7 +61,7 @@ auto seed_parameter_estimation_algorithm::operator()(
                                  measurements, spacepoints, seeds, result});
 
     // Return the result.
-    return result;
+    co_return result;
 }
 
 }  // namespace traccc::device
