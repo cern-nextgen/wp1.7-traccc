@@ -45,19 +45,21 @@ namespace traccc::device {
 /// synchronisation statement is required before destroying the buffer.
 ///
 class clusterization_algorithm
-    : public algorithm<edm::measurement_collection<default_algebra>::buffer(
-          const edm::silicon_cell_collection::const_view&,
-          const silicon_detector_description::const_view&)>,
-      public algorithm<edm::measurement_collection<default_algebra>::buffer(
-          const edm::silicon_cell_collection::const_view&,
-          const silicon_detector_description::const_view&,
-          clustering_discard_disjoint_set&&)>,
+    : public algorithm<
+          exec::task<edm::measurement_collection<default_algebra>::buffer>(
+              const edm::silicon_cell_collection::const_view&,
+              const silicon_detector_description::const_view&)>,
       public algorithm<
-          std::pair<edm::measurement_collection<default_algebra>::buffer,
-                    edm::silicon_cluster_collection::buffer>(
+          exec::task<edm::measurement_collection<default_algebra>::buffer>(
               const edm::silicon_cell_collection::const_view&,
               const silicon_detector_description::const_view&,
-              clustering_keep_disjoint_set&&)>,
+              clustering_discard_disjoint_set&&)>,
+      public algorithm<exec::task<
+          std::pair<edm::measurement_collection<default_algebra>::buffer,
+                    edm::silicon_cluster_collection::buffer>>(
+          const edm::silicon_cell_collection::const_view&,
+          const silicon_detector_description::const_view&,
+          clustering_keep_disjoint_set&&)>,
       public messaging,
       public algorithm_base {
 
@@ -85,18 +87,18 @@ class clusterization_algorithm
     /// @return a measurement collection (buffer)
     ///
     /// @{
-    edm::measurement_collection<default_algebra>::buffer operator()(
+    exec::task<edm::measurement_collection<default_algebra>::buffer> operator()(
         const edm::silicon_cell_collection::const_view& cells,
         const silicon_detector_description::const_view& det_descr)
         const override;
 
-    edm::measurement_collection<default_algebra>::buffer operator()(
+    exec::task<edm::measurement_collection<default_algebra>::buffer> operator()(
         const edm::silicon_cell_collection::const_view& cells,
         const silicon_detector_description::const_view& det_descr,
         clustering_discard_disjoint_set&&) const override;
 
-    std::pair<edm::measurement_collection<default_algebra>::buffer,
-              edm::silicon_cluster_collection::buffer>
+    exec::task<std::pair<edm::measurement_collection<default_algebra>::buffer,
+                         edm::silicon_cluster_collection::buffer>>
     operator()(const edm::silicon_cell_collection::const_view& cells,
                const silicon_detector_description::const_view& det_descr,
                clustering_keep_disjoint_set&&) const override;
@@ -141,8 +143,9 @@ class clusterization_algorithm
 
     private:
     /// Main algorithmic implementation of the clusterization algorithm
-    std::pair<edm::measurement_collection<default_algebra>::buffer,
-              std::optional<edm::silicon_cluster_collection::buffer>>
+    exec::task<
+        std::pair<edm::measurement_collection<default_algebra>::buffer,
+                  std::optional<edm::silicon_cluster_collection::buffer>>>
     execute_impl(const edm::silicon_cell_collection::const_view& cells,
                  const silicon_detector_description::const_view& det_descr,
                  bool keep_disjoint_set) const;
