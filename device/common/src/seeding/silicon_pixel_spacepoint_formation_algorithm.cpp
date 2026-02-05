@@ -36,7 +36,7 @@ auto silicon_pixel_spacepoint_formation_algorithm::operator()(
 
     // If there are no measurements, return right away.
     if (n_measurements == 0) {
-        return {};
+        co_return {};
     }
 
     // Create the result buffer.
@@ -48,7 +48,7 @@ auto silicon_pixel_spacepoint_formation_algorithm::operator()(
     form_spacepoints_kernel({n_measurements, det, measurements, spacepoints});
 
     // Return the reconstructed spacepoints.
-    return spacepoints;
+    co_return spacepoints;
 }
 
 }  // namespace traccc::device
