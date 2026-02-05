@@ -30,7 +30,7 @@ namespace traccc::device {
 /// measurements made on every detector module, into 3D spacepoint coordinates.
 ///
 class silicon_pixel_spacepoint_formation_algorithm
-    : public algorithm<edm::spacepoint_collection::buffer(
+    : public algorithm<exec::task<edm::spacepoint_collection::buffer>(
           const detector_buffer&,
           const edm::measurement_collection<default_algebra>::const_view&)>,
       public messaging,
@@ -52,7 +52,8 @@ class silicon_pixel_spacepoint_formation_algorithm
     ///
     /// @param det Detector object
     /// @param measurements A collection of measurements
-    /// @return A spacepoint buffer, with one spacepoint for every
+    /// @return A task returning a spacepoint buffer, with one spacepoint for
+    /// every
     ///         silicon pixel measurement
     ///
     output_type operator()(
