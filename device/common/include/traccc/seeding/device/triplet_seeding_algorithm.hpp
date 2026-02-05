@@ -39,7 +39,7 @@ namespace traccc::device {
 /// synchronisation statement is required before destroying this buffer.
 ///
 class triplet_seeding_algorithm
-    : public algorithm<edm::seed_collection::buffer(
+    : public algorithm<exec::task<edm::seed_collection::buffer>(
           const edm::spacepoint_collection::const_view&)>,
       public messaging,
       public algorithm_base {
@@ -67,7 +67,8 @@ class triplet_seeding_algorithm
     /// Operator executing the algorithm.
     ///
     /// @param spacepoints is a view of all spacepoints in the event
-    /// @return the buffer of track seeds reconstructed from the spacepoints
+    /// @return A task returning the buffer of track seeds reconstructed from
+    /// the spacepoints
     ///
     output_type operator()(const edm::spacepoint_collection::const_view&
                                spacepoints) const override;

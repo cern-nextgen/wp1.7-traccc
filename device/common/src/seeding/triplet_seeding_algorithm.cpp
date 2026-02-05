@@ -74,7 +74,7 @@ auto triplet_seeding_algorithm::operator()(
 
     // If there are no spacepoints, return right away.
     if (n_spacepoints == 0) {
-        return {};
+        co_return {};
     }
 
     // Set up the container that will be filled with the required capacities for
@@ -172,7 +172,7 @@ auto triplet_seeding_algorithm::operator()(
     // Exit already here if we won't find any triplets anyway.
     if ((globalCounter_host->m_nMidBot == 0) ||
         (globalCounter_host->m_nMidTop == 0)) {
-        return {};
+        co_return {};
     }
 
     // Set up the doublet buffers.
@@ -229,7 +229,7 @@ auto triplet_seeding_algorithm::operator()(
 
     // If no triplets could be found, exit already here.
     if (globalCounter_host->m_nTriplets == 0) {
-        return {};
+        co_return {};
     }
 
     // Set up the triplet buffer.
@@ -262,7 +262,7 @@ auto triplet_seeding_algorithm::operator()(
          triplet_counter_midBot_buffer, triplet_buffer, seed_buffer});
 
     // Return the seed buffer.
-    return seed_buffer;
+    co_return seed_buffer;
 }
 
 }  // namespace traccc::device
