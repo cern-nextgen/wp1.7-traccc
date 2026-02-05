@@ -206,8 +206,8 @@ full_chain_algorithm::output_type full_chain_algorithm::operator()(
     // If we have a Detray detector, run the seeding, track finding and fitting.
     if (m_detector != nullptr) {
         // Run the seed-finding (asynchronously).
-        const spacepoint_formation_algorithm::output_type spacepoints =
-            m_spacepoint_formation(m_device_detector, measurements);
+        const auto spacepoints =
+            co_await m_spacepoint_formation(m_device_detector, measurements);
         const auto track_params = co_await m_track_parameter_estimation(
             m_field, measurements, spacepoints, m_seeding(spacepoints));
 
@@ -258,8 +258,8 @@ full_chain_algorithm::seeding(
     if (m_detector != nullptr) {
 
         // Run the seed-finding (asynchronously).
-        const spacepoint_formation_algorithm::output_type spacepoints =
-            m_spacepoint_formation(m_device_detector, measurements);
+        const auto spacepoints =
+            co_await m_spacepoint_formation(m_device_detector, measurements);
         const auto track_params = co_await m_track_parameter_estimation(
             m_field, measurements, spacepoints, m_seeding(spacepoints));
 
