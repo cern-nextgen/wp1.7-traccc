@@ -33,11 +33,12 @@ namespace traccc::device {
 /// synchronisation statement is required before destroying this buffer.
 ///
 struct seed_parameter_estimation_algorithm
-    : public algorithm<bound_track_parameters_collection_types::buffer(
-          const magnetic_field&,
-          const edm::measurement_collection<default_algebra>::const_view&,
-          const edm::spacepoint_collection::const_view&,
-          const edm::seed_collection::const_view&)>,
+    : public algorithm<
+          exec::task<bound_track_parameters_collection_types::buffer>(
+              const magnetic_field&,
+              const edm::measurement_collection<default_algebra>::const_view&,
+              const edm::spacepoint_collection::const_view&,
+              const edm::seed_collection::const_view&)>,
       public messaging,
       public algorithm_base {
 
@@ -63,7 +64,8 @@ struct seed_parameter_estimation_algorithm
     /// @param measurements All measurements of the event
     /// @param spacepoints All spacepoints of the event
     /// @param seeds The reconstructed track seeds of the event
-    /// @return A vector of bound track parameters for the seeds
+    /// @return A task returning a vector of bound track parameters for the
+    /// seeds
     ///
     output_type operator()(
         const magnetic_field& bfield,
