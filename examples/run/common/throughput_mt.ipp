@@ -178,7 +178,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     // Determine the await strategy to use.
     await_strategy await_mode = await_strategy::sync;
     if (threading_opts.await_mode == opts::threading::await_strategy::suspend) {
-        await_mode = await_strategy::sync;  // Placeholder for suspension modes
+        await_mode = await_strategy::suspend;
     }
 
     // Set up the full-chain algorithm(s). One for each concurrent slot
@@ -315,7 +315,6 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             auto payload = [](auto& algs_, auto& input_, auto& progress_bar_,
                               auto& rec_track_params_, auto& queue_,
                               size_t event_, size_t slot_) -> exec::task<void> {
-                // Using the references stored in the coroutine frame
                 auto result = co_await algs_.at(slot_)(input_.at(event_));
                 rec_track_params_.fetch_add(result.size());
                 progress_bar_.tick();
