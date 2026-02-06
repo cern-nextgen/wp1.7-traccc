@@ -79,7 +79,7 @@ class silicon_pixel_spacepoint_formation_algorithm
     /// @}
 
     /// Possibly suspend execution until all asynchronous operations are done
-    virtual void await() const = 0;
+    virtual exec::task<void> await() const = 0;
 
 };  // class silicon_pixel_spacepoint_formation_algorithm
 

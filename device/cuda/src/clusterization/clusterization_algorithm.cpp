@@ -40,8 +40,8 @@ void clusterization_algorithm::cluster_maker_kernel(
                                      warp_size());
 }
 
-void clusterization_algorithm::await() const {
-    m_await_function(stream());
+exec::task<void> clusterization_algorithm::await() const {
+    co_await m_await_function(stream());
 }
 
 }  // namespace traccc::cuda

@@ -139,7 +139,7 @@ class clusterization_algorithm
     /// @}
 
     /// Possibly suspend execution until all asynchronous operations are done
-    virtual void await() const = 0;
+    virtual exec::task<void> await() const = 0;
 
     private:
     /// Main algorithmic implementation of the clusterization algorithm
