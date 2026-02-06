@@ -91,8 +91,8 @@ struct seed_parameter_estimation_algorithm
 
     /// @}
 
-    /// Possibly suspend execution until all asynchronous operations are done
-    virtual void await(vecmem::abstract_event& event) const = 0;
+    /// Suspend execution until all asynchronous operations are done
+    virtual exec::task<void> await(vecmem::abstract_event& event) const = 0;
 
     private:
     /// Internal data type

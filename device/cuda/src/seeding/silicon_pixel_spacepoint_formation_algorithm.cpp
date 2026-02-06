@@ -30,9 +30,9 @@ void silicon_pixel_spacepoint_formation_algorithm::form_spacepoints_kernel(
                                    warp_size());
 }
 
-void silicon_pixel_spacepoint_formation_algorithm::await(
+exec::task<void> silicon_pixel_spacepoint_formation_algorithm::await(
     vecmem::abstract_event& event) const {
-    m_await_function(stream(), event);
+    co_await m_await_function(stream(), event);
 }
 
 }  // namespace traccc::cuda

@@ -25,17 +25,22 @@ unsigned int algorithm_base::warp_size() const {
     return m_warp_size;
 }
 
-void default_await_function(const cuda::stream& stream,
-                            vecmem::abstract_event& event) {
-    await_event_sync(stream, event);
-}
-
-void await_stream_sync(const cuda::stream& stream, vecmem::abstract_event&) {
-    stream.synchronize();
-}
-
-void await_event_sync(const cuda::stream&, vecmem::abstract_event& event) {
+exec::task<void> default_await_function(const cuda::stream&,
+                                        vecmem::abstract_event& event) {
     event.wait();
+    co_return;
+}
+
+exec::task<void> await_stream_sync(const cuda::stream& stream,
+                                   vecmem::abstract_event&) {
+    stream.synchronize();
+    co_return;
+}
+
+exec::task<void> await_event_sync(const cuda::stream&,
+                                  vecmem::abstract_event& event) {
+    event.wait();
+    co_return;
 }
 
 }  // namespace traccc::cuda

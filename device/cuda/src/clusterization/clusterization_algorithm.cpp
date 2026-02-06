@@ -40,8 +40,9 @@ void clusterization_algorithm::cluster_maker_kernel(
                                      warp_size());
 }
 
-void clusterization_algorithm::await(vecmem::abstract_event& event) const {
-    m_await_function(stream(), event);
+exec::task<void> clusterization_algorithm::await(
+    vecmem::abstract_event& event) const {
+    co_await m_await_function(stream(), event);
 }
 
 }  // namespace traccc::cuda

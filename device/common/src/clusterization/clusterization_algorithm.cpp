@@ -84,7 +84,7 @@ clusterization_algorithm::execute_impl(
         vecmem::async_size size = copy().get_size(cells, *(mr().host));
         // Here we could give control back to the caller, once our code allows
         // for it. (coroutines...)<-WIP
-        await(size);
+        co_await await(size);
         num_cells = size.unsafe_get();
     } else {
         num_cells = copy().get_size(cells);
@@ -142,7 +142,7 @@ clusterization_algorithm::execute_impl(
                 copy().get_size(measurements, *(mr().host));
             // Here we could give control back to the caller, once our code
             // allows for it. (coroutines...)<-WIP
-            await(size);
+            co_await await(size);
             num_measurements = size.unsafe_get();
         } else {
             num_measurements = copy().get_size(measurements);

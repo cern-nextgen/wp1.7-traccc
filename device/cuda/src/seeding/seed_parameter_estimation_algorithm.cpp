@@ -32,8 +32,8 @@ void seed_parameter_estimation_algorithm::estimate_seed_params_kernel(
                                         warp_size());
 }
 
-void seed_parameter_estimation_algorithm::await(
+exec::task<void> seed_parameter_estimation_algorithm::await(
     vecmem::abstract_event& event) const {
-    m_await_function(stream(), event);
+    co_await m_await_function(stream(), event);
 }
 }  // namespace traccc::cuda
