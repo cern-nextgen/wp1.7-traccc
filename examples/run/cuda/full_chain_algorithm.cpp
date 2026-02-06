@@ -10,6 +10,7 @@
 
 #include "../common/await_strategy.hpp"
 #include "../common/event_sync_strategy.hpp"
+#include "await_exec.hpp"
 
 // Project include(s).
 #include "traccc/cuda/utils/algorithm_base.hpp"
@@ -48,6 +49,8 @@ await_function_t get_await_function(await_strategy await_mode,
             return await_stream_sync;
         case await_strategy::sync_event:
             return await_event_sync;
+        case await_strategy::callback:
+            return await_callback;
         default:
             throw std::invalid_argument("Unknown await strategy");
     }
