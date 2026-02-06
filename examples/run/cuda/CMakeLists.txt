@@ -34,7 +34,10 @@ find_package( CUDAToolkit REQUIRED )
 #
 add_library( traccc_examples_cuda STATIC
    "full_chain_algorithm.hpp"
-   "full_chain_algorithm.cpp" )
+   "full_chain_algorithm.cpp"
+   "suspend_exec.hpp"
+   "suspend_exec.cpp"
+   )
 target_link_libraries( traccc_examples_cuda
    PUBLIC CUDA::cudart vecmem::core vecmem::cuda detray::core detray::detectors
           traccc::core traccc::device_common traccc::cuda_utils traccc::cuda
