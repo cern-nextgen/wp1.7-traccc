@@ -28,7 +28,7 @@ auto silicon_pixel_spacepoint_formation_algorithm::operator()(
         vecmem::async_size size = copy().get_size(measurements, *(mr().host));
         // Here we could give control back to the caller, once our code allows
         // for it. (coroutines...)<-WIP
-        await();
+        co_await await();
         n_measurements = size.get();
     } else {
         n_measurements = copy().get_size(measurements);

@@ -32,7 +32,7 @@ void seed_parameter_estimation_algorithm::estimate_seed_params_kernel(
                                         warp_size());
 }
 
-void seed_parameter_estimation_algorithm::await() const {
-    m_await_function(stream());
+exec::task<void> seed_parameter_estimation_algorithm::await() const {
+    co_await m_await_function(stream());
 }
 }  // namespace traccc::cuda
