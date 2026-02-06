@@ -9,6 +9,7 @@
 
 // Local include(s).
 #include "traccc/clusterization/device/ccl_kernel_definitions.hpp"
+#include "traccc/clusterization/device/clusterization_kernel_payload.hpp"
 #include "traccc/clusterization/device/tags.hpp"
 #include "traccc/device/algorithm_base.hpp"
 
@@ -26,6 +27,9 @@
 #include <vecmem/memory/unique_ptr.hpp>
 #include <vecmem/utils/copy.hpp>
 
+// StdExec include(s).
+#include <exec/task.hpp>
+
 // System include(s).
 #include <functional>
 #include <optional>
@@ -41,19 +45,21 @@ namespace traccc::device {
 /// synchronisation statement is required before destroying the buffer.
 ///
 class clusterization_algorithm
-    : public algorithm<edm::measurement_collection<default_algebra>::buffer(
-          const edm::silicon_cell_collection::const_view&,
-          const silicon_detector_description::const_view&)>,
-      public algorithm<edm::measurement_collection<default_algebra>::buffer(
-          const edm::silicon_cell_collection::const_view&,
-          const silicon_detector_description::const_view&,
-          clustering_discard_disjoint_set&&)>,
+    : public algorithm<
+          exec::task<edm::measurement_collection<default_algebra>::buffer>(
+              const edm::silicon_cell_collection::const_view&,
+              const silicon_detector_description::const_view&)>,
       public algorithm<
-          std::pair<edm::measurement_collection<default_algebra>::buffer,
-                    edm::silicon_cluster_collection::buffer>(
+          exec::task<edm::measurement_collection<default_algebra>::buffer>(
               const edm::silicon_cell_collection::const_view&,
               const silicon_detector_description::const_view&,
-              clustering_keep_disjoint_set&&)>,
+              clustering_discard_disjoint_set&&)>,
+      public algorithm<exec::task<
+          std::pair<edm::measurement_collection<default_algebra>::buffer,
+                    edm::silicon_cluster_collection::buffer>>(
+          const edm::silicon_cell_collection::const_view&,
+          const silicon_detector_description::const_view&,
+          clustering_keep_disjoint_set&&)>,
       public messaging,
       public algorithm_base {
 
@@ -81,18 +87,18 @@ class clusterization_algorithm
     /// @return a measurement collection (buffer)
     ///
     /// @{
-    edm::measurement_collection<default_algebra>::buffer operator()(
+    exec::task<edm::measurement_collection<default_algebra>::buffer> operator()(
         const edm::silicon_cell_collection::const_view& cells,
         const silicon_detector_description::const_view& det_descr)
         const override;
 
-    edm::measurement_collection<default_algebra>::buffer operator()(
+    exec::task<edm::measurement_collection<default_algebra>::buffer> operator()(
         const edm::silicon_cell_collection::const_view& cells,
         const silicon_detector_description::const_view& det_descr,
         clustering_discard_disjoint_set&&) const override;
 
-    std::pair<edm::measurement_collection<default_algebra>::buffer,
-              edm::silicon_cluster_collection::buffer>
+    exec::task<std::pair<edm::measurement_collection<default_algebra>::buffer,
+                         edm::silicon_cluster_collection::buffer>>
     operator()(const edm::silicon_cell_collection::const_view& cells,
                const silicon_detector_description::const_view& det_descr,
                clustering_keep_disjoint_set&&) const override;
@@ -111,34 +117,7 @@ class clusterization_algorithm
         const edm::silicon_cell_collection::const_view& cells) const = 0;
 
     /// Payload for the @c ccl_kernel function
-    struct ccl_kernel_payload {
-        /// Number of cells in the event
-        unsigned int n_cells;
-        /// The clustering configuration
-        const config_type& config;
-        /// All cells in an event
-        const edm::silicon_cell_collection::const_view& cells;
-        /// The detector description
-        const silicon_detector_description::const_view& det_descr;
-        /// The measurement collection to fill
-        edm::measurement_collection<default_algebra>::view& measurements;
-        /// Buffer for linking cells to measurements
-        vecmem::data::vector_view<unsigned int>& cell_links;
-        /// Buffer for backup of the first element links
-        vecmem::data::vector_view<details::index_t>& f_backup;
-        /// Buffer for backup of the group first element links
-        vecmem::data::vector_view<details::index_t>& gf_backup;
-        /// Buffer for backup of the adjacency matrix (counts)
-        vecmem::data::vector_view<unsigned char>& adjc_backup;
-        /// Buffer for backup of the adjacency matrix (values)
-        vecmem::data::vector_view<details::index_t>& adjv_backup;
-        /// Mutex for the backup structures
-        unsigned int* backup_mutex;
-        /// Buffer for the disjoint set data structure
-        vecmem::data::vector_view<unsigned int>& disjoint_set;
-        /// Buffer for the sizes of the clusters
-        vecmem::data::vector_view<unsigned int>& cluster_sizes;
-    };
+    using ccl_kernel_payload = clusterization_ccl_kernel_payload;
 
     /// Main CCL kernel launcher
     ///
@@ -160,12 +139,13 @@ class clusterization_algorithm
     /// @}
 
     /// Possibly suspend execution until all asynchronous operations are done
-    virtual void await() const = 0;
+    virtual exec::task<void> await() const = 0;
 
     private:
     /// Main algorithmic implementation of the clusterization algorithm
-    std::pair<edm::measurement_collection<default_algebra>::buffer,
-              std::optional<edm::silicon_cluster_collection::buffer>>
+    exec::task<
+        std::pair<edm::measurement_collection<default_algebra>::buffer,
+                  std::optional<edm::silicon_cluster_collection::buffer>>>
     execute_impl(const edm::silicon_cell_collection::const_view& cells,
                  const silicon_detector_description::const_view& det_descr,
                  bool keep_disjoint_set) const;

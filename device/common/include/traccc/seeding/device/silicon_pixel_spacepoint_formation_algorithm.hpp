@@ -9,6 +9,7 @@
 
 // Local include(s).
 #include "traccc/device/algorithm_base.hpp"
+#include "traccc/seeding/device/silicon_pixel_spacepoint_formation_kernel_payload.hpp"
 
 // Project include(s).
 #include "traccc/edm/measurement_collection.hpp"
@@ -18,6 +19,9 @@
 #include "traccc/utils/memory_resource.hpp"
 #include "traccc/utils/messaging.hpp"
 
+// Stdexec include(s).
+#include <exec/task.hpp>
+
 namespace traccc::device {
 
 /// Algorithm forming space points out of measurements
@@ -26,7 +30,7 @@ namespace traccc::device {
 /// measurements made on every detector module, into 3D spacepoint coordinates.
 ///
 class silicon_pixel_spacepoint_formation_algorithm
-    : public algorithm<edm::spacepoint_collection::buffer(
+    : public algorithm<exec::task<edm::spacepoint_collection::buffer>(
           const detector_buffer&,
           const edm::measurement_collection<default_algebra>::const_view&)>,
       public messaging,
@@ -48,7 +52,8 @@ class silicon_pixel_spacepoint_formation_algorithm
     ///
     /// @param det Detector object
     /// @param measurements A collection of measurements
-    /// @return A spacepoint buffer, with one spacepoint for every
+    /// @return A task returning a spacepoint buffer, with one spacepoint for
+    /// every
     ///         silicon pixel measurement
     ///
     output_type operator()(
@@ -61,18 +66,8 @@ class silicon_pixel_spacepoint_formation_algorithm
     /// @{
 
     /// Payload for the @c form_spacepoints_kernel function
-    struct form_spacepoints_kernel_payload {
-        /// The number of measurements in the event
-        edm::measurement_collection<default_algebra>::const_view::size_type
-            n_measurements;
-        /// The detector object
-        const detector_buffer& detector;
-        /// The input measurements
-        const edm::measurement_collection<default_algebra>::const_view&
-            measurements;
-        /// The output spacepoints
-        edm::spacepoint_collection::view& spacepoints;
-    };
+    using form_spacepoints_kernel_payload =
+        silicon_pixel_spacepoint_formation_kernel_payload;
 
     /// Launch the spacepoint formation kernel
     ///
@@ -84,7 +79,7 @@ class silicon_pixel_spacepoint_formation_algorithm
     /// @}
 
     /// Possibly suspend execution until all asynchronous operations are done
-    virtual void await() const = 0;
+    virtual exec::task<void> await() const = 0;
 
 };  // class silicon_pixel_spacepoint_formation_algorithm
 

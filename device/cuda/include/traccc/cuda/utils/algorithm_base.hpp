@@ -13,6 +13,9 @@
 // System include(s).
 #include <functional>
 
+// Stdexec include(s).
+#include <exec/task.hpp>
+
 namespace traccc::cuda {
 
 /// Base class for all CUDA algorithms
@@ -41,8 +44,8 @@ class algorithm_base {
 
 };  // class algorithm_base
 
-using await_function_t = void (*)(const cuda::stream&);
+using await_function_t = exec::task<void> (*)(const cuda::stream&);
 
-void default_await_function(const cuda::stream& stream);
+exec::task<void> default_await_function(const cuda::stream& stream);
 
 }  // namespace traccc::cuda
