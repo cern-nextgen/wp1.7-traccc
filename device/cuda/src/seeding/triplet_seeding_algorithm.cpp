@@ -88,8 +88,8 @@ void triplet_seeding_algorithm::select_seeds_kernel(
                                warp_size());
 }
 
-void triplet_seeding_algorithm::await() const {
-    m_await_function(stream());
+exec::task<void> triplet_seeding_algorithm::await() const {
+    co_await m_await_function(stream());
 }
 
 }  // namespace traccc::cuda

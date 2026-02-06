@@ -53,7 +53,7 @@ struct seed_parameter_estimation_algorithm
 
     /// @}
 
-    void await() const override;
+    exec::task<void> await() const override;
 
     private:
     await_function_t m_await_function;

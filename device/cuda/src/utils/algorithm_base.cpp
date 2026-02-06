@@ -25,9 +25,9 @@ unsigned int algorithm_base::warp_size() const {
     return m_warp_size;
 }
 
-void default_await_function(const cuda::stream& stream) {
-
+exec::task<void> default_await_function(const cuda::stream& stream) {
     stream.synchronize();
+    co_return;
 }
 
 }  // namespace traccc::cuda
