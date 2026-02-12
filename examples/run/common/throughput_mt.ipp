@@ -173,7 +173,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     // Determine the await strategy to use.
     await_strategy await_mode = await_strategy::sync;
     if (threading_opts.await_mode == opts::threading::await_strategy::suspend) {
-        await_mode = await_strategy::sync; // Placeholder for suspension modes
+        await_mode = await_strategy::sync;  // Placeholder for suspension modes
     }
 
     // Set up the full-chain algorithm(s). One for each concurrent slot
@@ -299,7 +299,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             arena.execute([&, event, slot]() {
                 group.run([&, event, slot]() {
                     rec_track_params.fetch_add(
-                        algs.at(slot)(input[event]).size());
+                        process_event(static_cast<int>(slot), input[event]));
                     progress_bar.tick();
                     concurrent_slots.push(slot);
                 });
