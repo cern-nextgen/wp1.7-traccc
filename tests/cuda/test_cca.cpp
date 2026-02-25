@@ -17,11 +17,8 @@
 #include "traccc/clusterization/device/tags.hpp"
 #include "traccc/cuda/clusterization/clusterization_algorithm.hpp"
 #include "traccc/cuda/utils/stream.hpp"
+#include "traccc/execution/sync_wait.hpp"
 #include "traccc/geometry/silicon_detector_description.hpp"
-
-// Stdexec include(s).
-#include <exec/inline_scheduler.hpp>
-#include <stdexec/execution.hpp>
 
 namespace {
 vecmem::host_memory_resource host_mr;
@@ -62,15 +59,10 @@ cca_function_t get_f_with(traccc::clustering_config cfg) {
         copy.setup(cells_buffer)->wait();
         copy(vecmem::get_data(cells), cells_buffer)->wait();
 
-        auto clustering_result = stdexec::sync_wait(stdexec::starts_on(
-            stdexec::inline_scheduler{},
-            cc(cells_buffer, dd_buffer,
-               traccc::device::clustering_keep_disjoint_set{})));
-        if (!clustering_result.has_value()) {
-            throw std::runtime_error("Clusterization algorithm failed");
-        }
         auto [measurements_buffer, cluster_buffer] =
-            std::move(std::get<0>(clustering_result.value()));
+            sync_wait([](std::coroutine_handle<> handle) { handle.resume(); },
+                      cc(cells_buffer, dd_buffer,
+                         traccc::device::clustering_keep_disjoint_set{}));
         traccc::edm::measurement_collection<traccc::default_algebra>::host
             measurements{host_mr};
         copy(measurements_buffer, measurements)->wait();

@@ -10,9 +10,6 @@
 // Tbb include(s).
 #include <tbb/concurrent_queue.h>
 
-// Stdexec include(s).
-#include <exec/task.hpp>
-
 // System include(s).
 #include <functional>
 #include <ostream>
@@ -70,78 +67,5 @@ class threadpool {
 };
 
 std::ostream& operator<<(std::ostream& os, threadpool::wait_policy policy);
-
-/// Wrapper around a threadpool to be used as a scheduler for stdexec.
-class threadpool_scheduler {
-    public:
-    using scheduler_concept = stdexec::scheduler_t;
-
-    /// Construct a threadpool_scheduler that uses the given threadpool.
-    /// @param threadpool The threadpool to use for scheduling.
-    ///
-    /// @note The threadpool_scheduler does not take ownership of the
-    /// threadpool, the threadpool should remain valid for the lifetime of the
-    /// scheduler.
-    ///
-    threadpool_scheduler(threadpool& pool);
-
-    class env {
-        public:
-        env(threadpool* pool) noexcept;
-
-        template <typename T>
-        auto query(
-            const stdexec::get_completion_scheduler_t<T>&) const noexcept {
-            return threadpool_scheduler{*m_threadpool};
-        }
-
-        private:
-        threadpool* m_threadpool;  /// non-owning pointer to the threadpool
-    };
-
-    template <stdexec::receiver Receiver>
-    class operation {
-        public:
-        using operation_state_concept = stdexec::operation_state_t;
-
-        operation(Receiver&& receiver, threadpool* pool) noexcept
-            : m_receiver(std::forward<Receiver>(receiver)),
-              m_threadpool(pool) {}
-
-        void start() & noexcept {
-            m_threadpool->enqueue(
-                [this]() { stdexec::set_value(std::move(m_receiver)); });
-        }
-
-        private:
-        std::remove_cvref_t<Receiver> m_receiver;
-        threadpool* m_threadpool;
-    };
-
-    class sender {
-        public:
-        using sender_concept = stdexec::sender_t;
-        using completion_signatures =
-            stdexec::completion_signatures<stdexec::set_value_t()>;
-
-        sender(threadpool* pool) noexcept;
-        env get_env() const noexcept;
-
-        template <stdexec::receiver Receiver>
-        auto connect(Receiver&& receiver) {
-            return operation<Receiver>(std::forward<Receiver>(receiver),
-                                       m_threadpool);
-        }
-
-        private:
-        threadpool* m_threadpool;  /// non-owning pointer to the threadpool
-    };
-
-    sender schedule() const noexcept;
-    bool operator==(const threadpool_scheduler& other) const = default;
-
-    private:
-    threadpool* m_threadpool = nullptr;
-};
 
 }  // namespace traccc

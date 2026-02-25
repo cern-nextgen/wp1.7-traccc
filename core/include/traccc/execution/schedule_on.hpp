@@ -8,6 +8,7 @@
 
 namespace traccc {
 
+namespace detail::schedule_on {
 namespace concepts {
 template <typename T>
 concept HasScheduler = requires(T t) {
@@ -17,14 +18,13 @@ concept HasScheduler = requires(T t) {
 };
 }  // namespace concepts
 
-// Nestable coroutine, can be co_awaited by other coroutines.
-// Returns a single value of templated type via co_return if it isn't void
-// Doesn't co_yield.
+// Helper coroutine type allowing for having different scheduler than parent
+// coroutine.
 template <typename ResultType>
-class [[nodiscard]] task {
+class [[nodiscard]] Task {
 
     static_assert(std::movable<ResultType> || std::same_as<ResultType, void>,
-                  "task<ResultType> requires ResultType to be movable or void");
+                  "Task<ResultType> requires ResultType to be movable or void");
 
     public:
     using result_type = ResultType;
@@ -34,19 +34,20 @@ class [[nodiscard]] task {
         std::coroutine_handle<promise_type>;  // not required but useful
 
     // Constructor from coroutine handle
-    task(handle_type coroutine_handle) : m_coroutine(coroutine_handle) {}
-    ~task() {
+    explicit Task(handle_type coroutine_handle)
+        : m_coroutine(coroutine_handle) {}
+    ~Task() {
         if (m_coroutine) {
             m_coroutine.destroy();
         }
     }
-    task() = default;
-    task(const task&) = delete;
-    task& operator=(const task&) = delete;
-    task(task&& other) noexcept : m_coroutine{other.m_coroutine} {
+    Task() = default;
+    Task(const Task&) = delete;
+    Task& operator=(const Task&) = delete;
+    Task(Task&& other) noexcept : m_coroutine{other.m_coroutine} {
         other.m_coroutine = {};
     }
-    task& operator=(task&& other) noexcept {
+    Task& operator=(Task&& other) noexcept {
         if (this != &other) {
             if (m_coroutine) {
                 m_coroutine.destroy();
@@ -59,10 +60,10 @@ class [[nodiscard]] task {
 
     // Awaitable interface: always suspend to allow async execution
     bool await_ready() const noexcept { return false; }
-    // Awaitable interface: setup parent/scheduler relationship and transfer
-    // control to this coroutine
-    template <concepts::HasScheduler T>
-    inline handle_type await_suspend(std::coroutine_handle<T> handle) noexcept;
+    // Awaitable interface: setup parent relationship, suspend parent and
+    // schedule this coroutine on its scheduler
+    template <detail::schedule_on::concepts::HasScheduler T>
+    inline void await_suspend(std::coroutine_handle<T> handle) noexcept;
     // Awaitable interface: return result or rethrow exception on resume
     result_type await_resume() const;
 
@@ -70,7 +71,6 @@ class [[nodiscard]] task {
     handle_type m_coroutine = nullptr;
 };
 
-namespace detail::task {
 // Helper for handling co_return in promise_type, default implementation for
 // non-void ResultType
 template <typename ResultType>
@@ -97,18 +97,25 @@ struct ReturnHelper<void> {
     void return_void() {}
 };
 
-}  // namespace detail::task
-
 template <typename ResultType>
-struct task<ResultType>::promise_type
-    : public detail::task::ReturnHelper<
-          typename task<ResultType>::result_type> {
+struct Task<ResultType>::promise_type
+    : public ReturnHelper<typename Task<ResultType>::result_type> {
     // Storage for exceptions thrown in the coroutine body
     std::exception_ptr m_exception;
     // Handle to the parent coroutine that co_awaited this task
     std::coroutine_handle<> m_parent;
     // Handle to scheduler to resume this coroutine and propagate to children
     std::function<void(std::coroutine_handle<>)> m_scheduler;
+    // Handle to the scheduler to resume parent coroutine
+    std::function<void(std::coroutine_handle<>)> m_parent_scheduler;
+
+    // Non-default constructor to pass the scheduler. The constructor will be
+    // used if coroutine function has the same signature. The unused parameters
+    // are here only to match the signature.
+    template <typename Coro>
+    promise_type(std::function<void(std::coroutine_handle<>)> scheduler,
+                 Coro&&) noexcept
+        : m_scheduler(scheduler) {}
 
     // Accessor for scheduler used by child coroutines
     const auto& get_scheduler() const { return m_scheduler; }
@@ -116,7 +123,7 @@ struct task<ResultType>::promise_type
     void reschedule() { m_scheduler(handle_type::from_promise(*this)); }
 
     // Required by coroutines: create the object
-    task get_return_object() { return {handle_type::from_promise(*this)}; }
+    Task get_return_object() { return Task{handle_type::from_promise(*this)}; }
     // Required by coroutines: suspend immediately on start (lazy execution)
     std::suspend_always initial_suspend() const { return {}; }
     // Required by coroutines: handle completion and resume parent
@@ -124,14 +131,13 @@ struct task<ResultType>::promise_type
         struct final_awaiter {
             // Don't skip final suspension
             bool await_ready() const noexcept { return false; }
-            // Resume parent coroutine with symmetric transfer or return to
-            // caller
-            std::coroutine_handle<> await_suspend(handle_type handle) noexcept {
+            // Resume parent coroutine on its own scheduler
+            void await_suspend(handle_type handle) noexcept {
                 auto parent = handle.promise().m_parent;
-                if (parent) {
-                    return parent;
+                auto parent_scheduler = handle.promise().m_parent_scheduler;
+                if (parent && parent_scheduler) {
+                    parent_scheduler(parent);
                 }
-                return std::noop_coroutine();
             }
             // No action needed on resume
             void await_resume() const noexcept {}
@@ -143,16 +149,16 @@ struct task<ResultType>::promise_type
 };
 
 template <typename ResultType>
-template <concepts::HasScheduler T>
-inline task<ResultType>::handle_type task<ResultType>::await_suspend(
+template <detail::schedule_on::concepts::HasScheduler T>
+inline void Task<ResultType>::await_suspend(
     std::coroutine_handle<T> handle) noexcept {
     m_coroutine.promise().m_parent = handle;
-    m_coroutine.promise().m_scheduler = handle.promise().get_scheduler();
-    return m_coroutine;
+    m_coroutine.promise().m_parent_scheduler = handle.promise().get_scheduler();
+    m_coroutine.promise().reschedule();
 }
 
 template <typename ResultType>
-inline typename task<ResultType>::result_type task<ResultType>::await_resume()
+inline typename Task<ResultType>::result_type Task<ResultType>::await_resume()
     const {
     if (m_coroutine.promise().m_exception) {
         std::rethrow_exception(m_coroutine.promise().m_exception);
@@ -162,5 +168,12 @@ inline typename task<ResultType>::result_type task<ResultType>::await_resume()
     } else {
         return std::move(m_coroutine.promise().m_value).value();
     }
+}
+}  // namespace detail::schedule_on
+
+template <typename Coro>
+auto schedule_on(std::function<void(std::coroutine_handle<>)>, Coro coro)
+    -> detail::schedule_on::Task<typename Coro::result_type> {
+    co_return co_await coro;
 }
 }  // namespace traccc

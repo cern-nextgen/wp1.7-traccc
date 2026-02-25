@@ -8,10 +8,12 @@
 #pragma once
 
 // Local include(s).
+#include "inline_scheduler.hpp"
 #include "make_magnetic_field.hpp"
 #include "traccc/examples/utils/threadpool.hpp"
 
 // Project include(s)
+#include "traccc/execution/sync_wait.hpp"
 #include "traccc/execution/task.hpp"
 #include "traccc/geometry/detector.hpp"
 #include "traccc/geometry/host_detector.hpp"
@@ -46,10 +48,6 @@
 
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
-
-// Stdexec include(s).
-#include <exec/inline_scheduler.hpp>
-#include <stdexec/execution.hpp>
 
 // System include(s).
 #include <cstdlib>
@@ -186,7 +184,7 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
     }
 
     // Set up a scheduler executing the tasks on the current thread.
-    stdexec::inline_scheduler scheduler;
+    auto scheduler = inline_scheduler{};
 
     // Dummy count uses output of tp algorithm to ensure the compiler
     // optimisations don't skip any step
@@ -217,12 +215,9 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            auto result = stdexec::sync_wait(stdexec::starts_on(
-                scheduler, process_event(alg.get(), input[event])));
-            if (!result.has_value()) {
-                throw std::runtime_error("Task execution failed");
-            }
-            rec_track_params += std::get<0>(result.value());
+            auto result =
+                sync_wait(scheduler, process_event(alg.get(), input[event]));
+            rec_track_params += result;
             progress_bar.tick();
         }
     }
@@ -253,12 +248,9 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            auto result = stdexec::sync_wait(stdexec::starts_on(
-                scheduler, process_event(alg.get(), input[event])));
-            if (!result.has_value()) {
-                throw std::runtime_error("Task execution failed");
-            }
-            rec_track_params += std::get<0>(result.value());
+            auto result =
+                sync_wait(scheduler, process_event(alg.get(), input[event]));
+            rec_track_params += result;
             progress_bar.tick();
         }
     }
