@@ -65,6 +65,8 @@ traccc_add_library( traccc_core core TYPE SHARED
   "include/traccc/utils/logging.hpp"
   "include/traccc/utils/prob.hpp"
   "src/utils/logging.cpp"
+  # Execution.
+  "include/traccc/execution/task.hpp"
   # Clusterization algorithmic code.
   "include/traccc/clusterization/details/sparse_ccl.hpp"
   "include/traccc/clusterization/impl/sparse_ccl.ipp"
@@ -138,7 +140,7 @@ traccc_add_library( traccc_core core TYPE SHARED
   "src/ambiguity_resolution/legacy/greedy_ambiguity_resolution_algorithm.cpp")
 target_link_libraries( traccc_core
   PUBLIC Eigen3::Eigen vecmem::core covfie::core detray::core detray::detectors
-         traccc::algebra Acts::Core )
+         traccc::algebra Acts::Core STDEXEC::stdexec )
 
 # Prevent Eigen from getting confused when building code for a
 # CUDA or HIP backend with SYCL.

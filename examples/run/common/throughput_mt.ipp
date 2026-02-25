@@ -13,6 +13,7 @@
 #include "task_arena_scheduler.hpp"
 
 // Project include(s)
+#include "traccc/execution/task.hpp"
 #include "traccc/geometry/detector.hpp"
 #include "traccc/geometry/host_detector.hpp"
 #include "traccc/seeding/detail/track_params_estimation_config.hpp"
@@ -55,7 +56,6 @@
 
 // Stdexec include(s).
 #include <exec/async_scope.hpp>
-#include <exec/task.hpp>
 
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
@@ -193,14 +193,13 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     }
 
     // Set up a lambda that calls the correct function on the algorithms.
-    std::function<exec::task<std::size_t>(
-        std::vector<FULL_CHAIN_ALG>&, int,
-        const edm::silicon_cell_collection::host&)>
+    std::function<task<std::size_t>(std::vector<FULL_CHAIN_ALG>&, int,
+                                    const edm::silicon_cell_collection::host&)>
         process_event;
     if (throughput_opts.reco_stage == opts::throughput::stage::seeding) {
         process_event = [](std::vector<FULL_CHAIN_ALG>& algs_, int slot_,
                            const edm::silicon_cell_collection::host& cells_)
-            -> exec::task<std::size_t> {
+            -> task<std::size_t> {
             auto result = co_await algs_.at(static_cast<std::size_t>(slot_))
                               .seeding(cells_);
             co_return result.size();
@@ -208,7 +207,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     } else if (throughput_opts.reco_stage == opts::throughput::stage::full) {
         process_event = [](std::vector<FULL_CHAIN_ALG>& algs_, int slot_,
                            const edm::silicon_cell_collection::host& cells_)
-            -> exec::task<std::size_t> {
+            -> task<std::size_t> {
             auto result =
                 co_await algs_.at(static_cast<std::size_t>(slot_))(cells_);
             co_return result.size();
@@ -266,7 +265,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             auto payload = [](auto& algs_, auto& input_, auto& progress_bar_,
                               auto& rec_track_params_, auto& queue_,
                               size_t event_, size_t slot_,
-                              auto& process_event_) -> exec::task<void> {
+                              auto& process_event_) -> task<void> {
                 auto result = co_await process_event_(
                     algs_, static_cast<int>(slot_), input_.at(event_));
                 rec_track_params_.fetch_add(result);
@@ -314,7 +313,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             auto payload = [](auto& algs_, auto& input_, auto& progress_bar_,
                               auto& rec_track_params_, auto& queue_,
                               size_t event_, size_t slot_,
-                              auto& process_event_) -> exec::task<void> {
+                              auto& process_event_) -> task<void> {
                 auto result = co_await process_event_(
                     algs_, static_cast<int>(slot_), input_.at(event_));
                 rec_track_params_.fetch_add(result);

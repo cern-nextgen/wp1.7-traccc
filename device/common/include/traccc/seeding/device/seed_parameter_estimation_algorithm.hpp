@@ -9,6 +9,7 @@
 
 // Local include(s).
 #include "traccc/device/algorithm_base.hpp"
+#include "traccc/execution/task.hpp"
 #include "traccc/seeding/device/seed_parameter_estimation_kernel_payload.hpp"
 
 // Project include(s)
@@ -22,9 +23,6 @@
 #include "traccc/utils/memory_resource.hpp"
 #include "traccc/utils/messaging.hpp"
 
-// Stdexec include(s).
-#include <exec/task.hpp>
-
 namespace traccc::device {
 
 /// Seed track parameter estimation algorithm
@@ -33,12 +31,11 @@ namespace traccc::device {
 /// synchronisation statement is required before destroying this buffer.
 ///
 struct seed_parameter_estimation_algorithm
-    : public algorithm<
-          exec::task<bound_track_parameters_collection_types::buffer>(
-              const magnetic_field&,
-              const edm::measurement_collection<default_algebra>::const_view&,
-              const edm::spacepoint_collection::const_view&,
-              const edm::seed_collection::const_view&)>,
+    : public algorithm<task<bound_track_parameters_collection_types::buffer>(
+          const magnetic_field&,
+          const edm::measurement_collection<default_algebra>::const_view&,
+          const edm::spacepoint_collection::const_view&,
+          const edm::seed_collection::const_view&)>,
       public messaging,
       public algorithm_base {
 
@@ -92,7 +89,7 @@ struct seed_parameter_estimation_algorithm
     /// @}
 
     /// Possibly suspend execution until all asynchronous operations are done
-    virtual exec::task<void> await() const = 0;
+    virtual task<void> await() const = 0;
 
     private:
     /// Internal data type

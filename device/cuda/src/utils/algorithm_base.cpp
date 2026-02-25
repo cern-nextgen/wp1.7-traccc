@@ -9,6 +9,7 @@
 #include "traccc/cuda/utils/algorithm_base.hpp"
 
 #include "../utils/utils.hpp"
+#include "traccc/execution/task.hpp"
 
 namespace traccc::cuda {
 
@@ -25,7 +26,7 @@ unsigned int algorithm_base::warp_size() const {
     return m_warp_size;
 }
 
-exec::task<void> default_await_function(const cuda::stream& stream) {
+task<void> default_await_function(const cuda::stream& stream) {
     stream.synchronize();
     co_return;
 }

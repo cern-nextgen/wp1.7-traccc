@@ -9,6 +9,7 @@
 
 // Local include(s).
 #include "traccc/device/algorithm_base.hpp"
+#include "traccc/execution/task.hpp"
 #include "traccc/seeding/device/silicon_pixel_spacepoint_formation_kernel_payload.hpp"
 
 // Project include(s).
@@ -19,9 +20,6 @@
 #include "traccc/utils/memory_resource.hpp"
 #include "traccc/utils/messaging.hpp"
 
-// Stdexec include(s).
-#include <exec/task.hpp>
-
 namespace traccc::device {
 
 /// Algorithm forming space points out of measurements
@@ -30,7 +28,7 @@ namespace traccc::device {
 /// measurements made on every detector module, into 3D spacepoint coordinates.
 ///
 class silicon_pixel_spacepoint_formation_algorithm
-    : public algorithm<exec::task<edm::spacepoint_collection::buffer>(
+    : public algorithm<task<edm::spacepoint_collection::buffer>(
           const detector_buffer&,
           const edm::measurement_collection<default_algebra>::const_view&)>,
       public messaging,
@@ -79,7 +77,7 @@ class silicon_pixel_spacepoint_formation_algorithm
     /// @}
 
     /// Possibly suspend execution until all asynchronous operations are done
-    virtual exec::task<void> await() const = 0;
+    virtual task<void> await() const = 0;
 
 };  // class silicon_pixel_spacepoint_formation_algorithm
 

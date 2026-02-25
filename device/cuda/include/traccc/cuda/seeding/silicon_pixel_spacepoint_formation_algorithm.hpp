@@ -54,7 +54,7 @@ class silicon_pixel_spacepoint_formation_algorithm
 
     /// @}
 
-    exec::task<void> await() const override;
+    task<void> await() const override;
 
     private:
     await_function_t m_await_function;

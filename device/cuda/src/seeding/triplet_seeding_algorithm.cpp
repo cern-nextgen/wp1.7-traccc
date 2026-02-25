@@ -88,7 +88,7 @@ void triplet_seeding_algorithm::select_seeds_kernel(
                                warp_size());
 }
 
-exec::task<void> triplet_seeding_algorithm::await() const {
+task<void> triplet_seeding_algorithm::await() const {
     co_await m_await_function(stream());
 }
 

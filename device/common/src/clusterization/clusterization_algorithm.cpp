@@ -32,7 +32,7 @@ clusterization_algorithm::clusterization_algorithm(
         ->wait();
 }
 
-exec::task<edm::measurement_collection<default_algebra>::buffer>
+task<edm::measurement_collection<default_algebra>::buffer>
 clusterization_algorithm::operator()(
     const edm::silicon_cell_collection::const_view& cells,
     const silicon_detector_description::const_view& det_descr) const {
@@ -41,7 +41,7 @@ clusterization_algorithm::operator()(
                                         clustering_discard_disjoint_set{});
 }
 
-exec::task<edm::measurement_collection<default_algebra>::buffer>
+task<edm::measurement_collection<default_algebra>::buffer>
 clusterization_algorithm::operator()(
     const edm::silicon_cell_collection::const_view& cells,
     const silicon_detector_description::const_view& det_descr,
@@ -54,8 +54,8 @@ clusterization_algorithm::operator()(
     co_return std::move(res);
 }
 
-exec::task<std::pair<edm::measurement_collection<default_algebra>::buffer,
-                     edm::silicon_cluster_collection::buffer>>
+task<std::pair<edm::measurement_collection<default_algebra>::buffer,
+               edm::silicon_cluster_collection::buffer>>
 clusterization_algorithm::operator()(
     const edm::silicon_cell_collection::const_view& cells,
     const silicon_detector_description::const_view& det_descr,
@@ -68,8 +68,8 @@ clusterization_algorithm::operator()(
     co_return {std::move(res), std::move(*djs)};
 }
 
-exec::task<std::pair<edm::measurement_collection<default_algebra>::buffer,
-                     std::optional<edm::silicon_cluster_collection::buffer>>>
+task<std::pair<edm::measurement_collection<default_algebra>::buffer,
+               std::optional<edm::silicon_cluster_collection::buffer>>>
 clusterization_algorithm::execute_impl(
     const edm::silicon_cell_collection::const_view& cells,
     const silicon_detector_description::const_view& det_descr,
