@@ -8,8 +8,8 @@
 // Local include(s).
 #include "full_chain_algorithm.hpp"
 
-// Stdexec include(s).
-#include <exec/task.hpp>
+// Project include(s).
+#include "traccc/execution/task.hpp"
 
 namespace traccc {
 
@@ -97,7 +97,7 @@ full_chain_algorithm::output_type full_chain_algorithm::operator()(
     }
 }
 
-exec::task<bound_track_parameters_collection_types::host>
+task<bound_track_parameters_collection_types::host>
 full_chain_algorithm::seeding(
     const edm::silicon_cell_collection::host& cells) const {
 

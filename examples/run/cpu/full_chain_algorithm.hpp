@@ -16,6 +16,7 @@
 #include "traccc/edm/silicon_cell_collection.hpp"
 #include "traccc/edm/track_collection.hpp"
 #include "traccc/edm/track_parameters.hpp"
+#include "traccc/execution/task.hpp"
 #include "traccc/finding/combinatorial_kalman_filter_algorithm.hpp"
 #include "traccc/fitting/kalman_fitting_algorithm.hpp"
 #include "traccc/geometry/detector.hpp"
@@ -32,9 +33,6 @@
 #include <vecmem/memory/memory_resource.hpp>
 #include <vecmem/utils/copy.hpp>
 
-// Stdexec include(s).
-#include <exec/task.hpp>
-
 // System include(s).
 #include <functional>
 #include <memory>
@@ -46,7 +44,7 @@ namespace traccc {
 /// At least as much as is implemented in the project at any given moment.
 ///
 class full_chain_algorithm
-    : public algorithm<exec::task<edm::track_collection<default_algebra>::host>(
+    : public algorithm<task<edm::track_collection<default_algebra>::host>(
           const edm::silicon_cell_collection::host&)>,
       public messaging {
 
@@ -101,7 +99,7 @@ class full_chain_algorithm
     /// @param cells The cells for every detector module in the event
     /// @return A task returning the track seeds reconstructed
     ///
-    exec::task<bound_track_parameters_collection_types::host> seeding(
+    task<bound_track_parameters_collection_types::host> seeding(
         const edm::silicon_cell_collection::host& cells) const;
 
     private:

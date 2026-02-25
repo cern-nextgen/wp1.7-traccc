@@ -14,6 +14,7 @@
 #include "traccc/edm/device/device_triplet.hpp"
 #include "traccc/edm/device/doublet_counter.hpp"
 #include "traccc/edm/device/triplet_counter.hpp"
+#include "traccc/execution/task.hpp"
 
 // Project include(s).
 #include "traccc/edm/seed_collection.hpp"
@@ -24,9 +25,6 @@
 #include "traccc/utils/algorithm.hpp"
 #include "traccc/utils/memory_resource.hpp"
 #include "traccc/utils/messaging.hpp"
-
-// Stdexec include(s).
-#include <exec/task.hpp>
 
 // System include(s).
 #include <memory>
@@ -39,7 +37,7 @@ namespace traccc::device {
 /// synchronisation statement is required before destroying this buffer.
 ///
 class triplet_seeding_algorithm
-    : public algorithm<exec::task<edm::seed_collection::buffer>(
+    : public algorithm<task<edm::seed_collection::buffer>(
           const edm::spacepoint_collection::const_view&)>,
       public messaging,
       public algorithm_base {
@@ -179,7 +177,7 @@ class triplet_seeding_algorithm
     /// @}
 
     /// Possibly suspend execution until all asynchronous operations are done
-    virtual exec::task<void> await() const = 0;
+    virtual task<void> await() const = 0;
 
     private:
     /// Internal data type

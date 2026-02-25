@@ -12,6 +12,7 @@
 #include "traccc/clusterization/device/clusterization_kernel_payload.hpp"
 #include "traccc/clusterization/device/tags.hpp"
 #include "traccc/device/algorithm_base.hpp"
+#include "traccc/execution/task.hpp"
 
 // Project include(s).
 #include "traccc/clusterization/clustering_config.hpp"
@@ -26,9 +27,6 @@
 // VecMem include(s).
 #include <vecmem/memory/unique_ptr.hpp>
 #include <vecmem/utils/copy.hpp>
-
-// StdExec include(s).
-#include <exec/task.hpp>
 
 // System include(s).
 #include <functional>
@@ -46,20 +44,20 @@ namespace traccc::device {
 ///
 class clusterization_algorithm
     : public algorithm<
-          exec::task<edm::measurement_collection<default_algebra>::buffer>(
+          task<edm::measurement_collection<default_algebra>::buffer>(
               const edm::silicon_cell_collection::const_view&,
               const silicon_detector_description::const_view&)>,
       public algorithm<
-          exec::task<edm::measurement_collection<default_algebra>::buffer>(
+          task<edm::measurement_collection<default_algebra>::buffer>(
               const edm::silicon_cell_collection::const_view&,
               const silicon_detector_description::const_view&,
               clustering_discard_disjoint_set&&)>,
-      public algorithm<exec::task<
-          std::pair<edm::measurement_collection<default_algebra>::buffer,
-                    edm::silicon_cluster_collection::buffer>>(
-          const edm::silicon_cell_collection::const_view&,
-          const silicon_detector_description::const_view&,
-          clustering_keep_disjoint_set&&)>,
+      public algorithm<
+          task<std::pair<edm::measurement_collection<default_algebra>::buffer,
+                         edm::silicon_cluster_collection::buffer>>(
+              const edm::silicon_cell_collection::const_view&,
+              const silicon_detector_description::const_view&,
+              clustering_keep_disjoint_set&&)>,
       public messaging,
       public algorithm_base {
 
@@ -87,18 +85,18 @@ class clusterization_algorithm
     /// @return a measurement collection (buffer)
     ///
     /// @{
-    exec::task<edm::measurement_collection<default_algebra>::buffer> operator()(
+    task<edm::measurement_collection<default_algebra>::buffer> operator()(
         const edm::silicon_cell_collection::const_view& cells,
         const silicon_detector_description::const_view& det_descr)
         const override;
 
-    exec::task<edm::measurement_collection<default_algebra>::buffer> operator()(
+    task<edm::measurement_collection<default_algebra>::buffer> operator()(
         const edm::silicon_cell_collection::const_view& cells,
         const silicon_detector_description::const_view& det_descr,
         clustering_discard_disjoint_set&&) const override;
 
-    exec::task<std::pair<edm::measurement_collection<default_algebra>::buffer,
-                         edm::silicon_cluster_collection::buffer>>
+    task<std::pair<edm::measurement_collection<default_algebra>::buffer,
+                   edm::silicon_cluster_collection::buffer>>
     operator()(const edm::silicon_cell_collection::const_view& cells,
                const silicon_detector_description::const_view& det_descr,
                clustering_keep_disjoint_set&&) const override;
@@ -139,13 +137,12 @@ class clusterization_algorithm
     /// @}
 
     /// Possibly suspend execution until all asynchronous operations are done
-    virtual exec::task<void> await() const = 0;
+    virtual task<void> await() const = 0;
 
     private:
     /// Main algorithmic implementation of the clusterization algorithm
-    exec::task<
-        std::pair<edm::measurement_collection<default_algebra>::buffer,
-                  std::optional<edm::silicon_cluster_collection::buffer>>>
+    task<std::pair<edm::measurement_collection<default_algebra>::buffer,
+                   std::optional<edm::silicon_cluster_collection::buffer>>>
     execute_impl(const edm::silicon_cell_collection::const_view& cells,
                  const silicon_detector_description::const_view& det_descr,
                  bool keep_disjoint_set) const;

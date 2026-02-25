@@ -3,13 +3,13 @@
 
 // Project include(s).
 #include "traccc/cuda/utils/stream.hpp"
+#include "traccc/execution/task.hpp"
 
 // CUDA includes(s).
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
 
 // Stdexec include(s).
-#include <exec/task.hpp>
 #include <stdexec/execution.hpp>
 
 #define CUDA_ERROR_CHECK(EXP)                                                  \
@@ -85,7 +85,7 @@ class stream_await_sender::stream_await_operation {
 
 static_assert(stdexec::sender<stream_await_sender>);
 
-exec::task<void> suspend_exec(const cuda::stream& stream) {
+task<void> suspend_exec(const cuda::stream& stream) {
     auto cuda_stream = static_cast<cudaStream_t>(stream.cudaStream());
     co_await stream_await_sender{cuda_stream};
     co_return;
