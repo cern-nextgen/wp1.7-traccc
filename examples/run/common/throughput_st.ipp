@@ -8,9 +8,12 @@
 #pragma once
 
 // Local include(s).
+#include "inline_scheduler.hpp"
 #include "make_magnetic_field.hpp"
 
 // Project include(s)
+#include "traccc/execution/sync_wait.hpp"
+#include "traccc/execution/task.hpp"
 #include "traccc/geometry/detector.hpp"
 #include "traccc/geometry/host_detector.hpp"
 #include "traccc/seeding/detail/track_params_estimation_config.hpp"
@@ -155,17 +158,29 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
     }
 
     // Set up a lambda that calls the correct function on the algorithm.
-    std::function<std::size_t(const edm::silicon_cell_collection::host&)>
+    std::function<task<std::size_t>(FULL_CHAIN_ALG*,
+                                    const edm::silicon_cell_collection::host&)>
         process_event;
     if (throughput_opts.reco_stage == opts::throughput::stage::seeding) {
-        process_event = [&](const edm::silicon_cell_collection::host& cells)
-            -> std::size_t { return alg->seeding(cells).size(); };
+        process_event = [](FULL_CHAIN_ALG* alg_,
+                           const edm::silicon_cell_collection::host& cells_)
+            -> task<std::size_t> {
+            auto result = co_await alg_->seeding(cells_);
+            co_return result.size();
+        };
     } else if (throughput_opts.reco_stage == opts::throughput::stage::full) {
-        process_event = [&](const edm::silicon_cell_collection::host& cells)
-            -> std::size_t { return (*alg)(cells).size(); };
+        process_event = [](FULL_CHAIN_ALG* alg_,
+                           const edm::silicon_cell_collection::host& cells_)
+            -> task<std::size_t> {
+            auto result = co_await (*alg_)(cells_);
+            co_return result.size();
+        };
     } else {
         throw std::invalid_argument("Unknown reconstruction stage");
     }
+
+    // Set up a scheduler executing the tasks on the current thread.
+    auto scheduler = inline_scheduler{};
 
     // Dummy count uses output of tp algorithm to ensure the compiler
     // optimisations don't skip any step
@@ -196,7 +211,9 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            rec_track_params += process_event(input[event]);
+            auto result =
+                sync_wait(scheduler, process_event(alg.get(), input[event]));
+            rec_track_params += result;
             progress_bar.tick();
         }
     }
@@ -227,7 +244,9 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            rec_track_params += process_event(input[event]);
+            auto result =
+                sync_wait(scheduler, process_event(alg.get(), input[event]));
+            rec_track_params += result;
             progress_bar.tick();
         }
     }

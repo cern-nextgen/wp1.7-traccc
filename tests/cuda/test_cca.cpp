@@ -17,6 +17,7 @@
 #include "traccc/clusterization/device/tags.hpp"
 #include "traccc/cuda/clusterization/clusterization_algorithm.hpp"
 #include "traccc/cuda/utils/stream.hpp"
+#include "traccc/execution/sync_wait.hpp"
 #include "traccc/geometry/silicon_detector_description.hpp"
 
 namespace {
@@ -59,8 +60,9 @@ cca_function_t get_f_with(traccc::clustering_config cfg) {
         copy(vecmem::get_data(cells), cells_buffer)->wait();
 
         auto [measurements_buffer, cluster_buffer] =
-            cc(cells_buffer, dd_buffer,
-               traccc::device::clustering_keep_disjoint_set{});
+            sync_wait([](std::coroutine_handle<> handle) { handle.resume(); },
+                      cc(cells_buffer, dd_buffer,
+                         traccc::device::clustering_keep_disjoint_set{}));
         traccc::edm::measurement_collection<traccc::default_algebra>::host
             measurements{host_mr};
         copy(measurements_buffer, measurements)->wait();

@@ -9,7 +9,7 @@
 
 // Local include(s).
 #include "traccc/cuda/utils/stream.hpp"
-
+#include "traccc/execution/task.hpp"
 // System include(s).
 #include <functional>
 
@@ -41,8 +41,8 @@ class algorithm_base {
 
 };  // class algorithm_base
 
-using await_function_t = void (*)(const cuda::stream&);
+using await_function_t = task<void> (*)(const cuda::stream&);
 
-void default_await_function(const cuda::stream& stream);
+task<void> default_await_function(const cuda::stream& stream);
 
 }  // namespace traccc::cuda

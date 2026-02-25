@@ -10,13 +10,13 @@
 #include "traccc/clusterization/clustering_config.hpp"
 #include "traccc/cuda/clusterization/clusterization_algorithm.hpp"
 #include "traccc/definitions/common.hpp"
+#include "traccc/execution/sync_wait.hpp"
 #include "traccc/geometry/silicon_detector_description.hpp"
 #include "traccc/performance/collection_comparator.hpp"
 
 // VecMem include(s).
 #include <vecmem/memory/cuda/managed_memory_resource.hpp>
 #include <vecmem/utils/cuda/async_copy.hpp>
-
 // GTest include(s).
 #include <gtest/gtest.h>
 
@@ -61,8 +61,8 @@ TEST(CUDAClustering, SingleModule) {
                                                    default_ccl_test_config());
 
     auto measurements_buffer =
-        ca_cuda(vecmem::get_data(cells), vecmem::get_data(dd));
-
+        sync_wait([](std::coroutine_handle<> handle) { handle.resume(); },
+                  ca_cuda(vecmem::get_data(cells), vecmem::get_data(dd)));
     edm::measurement_collection<default_algebra>::const_device measurements(
         measurements_buffer);
 

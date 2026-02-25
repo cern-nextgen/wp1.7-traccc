@@ -10,8 +10,11 @@
 // Local include(s).
 #include "await_strategy.hpp"
 #include "make_magnetic_field.hpp"
+#include "task_arena_scheduler.hpp"
 
 // Project include(s)
+#include "traccc/execution/counting_scope.hpp"
+#include "traccc/execution/task.hpp"
 #include "traccc/geometry/detector.hpp"
 #include "traccc/geometry/host_detector.hpp"
 #include "traccc/seeding/detail/track_params_estimation_config.hpp"
@@ -173,7 +176,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     // Determine the await strategy to use.
     await_strategy await_mode = await_strategy::sync;
     if (threading_opts.await_mode == opts::threading::await_strategy::suspend) {
-        await_mode = await_strategy::sync;  // Placeholder for suspension modes
+        await_mode = await_strategy::suspend;
     }
 
     // Set up the full-chain algorithm(s). One for each concurrent slot
@@ -188,21 +191,24 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     }
 
     // Set up a lambda that calls the correct function on the algorithms.
-    std::function<std::size_t(int, const edm::silicon_cell_collection::host&)>
+    std::function<task<std::size_t>(std::vector<FULL_CHAIN_ALG>&, int,
+                                    const edm::silicon_cell_collection::host&)>
         process_event;
     if (throughput_opts.reco_stage == opts::throughput::stage::seeding) {
-        process_event = [&](int thread,
-                            const edm::silicon_cell_collection::host& cells)
-            -> std::size_t {
-            return algs.at(static_cast<std::size_t>(thread))
-                .seeding(cells)
-                .size();
+        process_event = [](std::vector<FULL_CHAIN_ALG>& algs_, int slot_,
+                           const edm::silicon_cell_collection::host& cells_)
+            -> task<std::size_t> {
+            auto result = co_await algs_.at(static_cast<std::size_t>(slot_))
+                              .seeding(cells_);
+            co_return result.size();
         };
     } else if (throughput_opts.reco_stage == opts::throughput::stage::full) {
-        process_event = [&](int thread,
-                            const edm::silicon_cell_collection::host& cells)
-            -> std::size_t {
-            return algs.at(static_cast<std::size_t>(thread))(cells).size();
+        process_event = [](std::vector<FULL_CHAIN_ALG>& algs_, int slot_,
+                           const edm::silicon_cell_collection::host& cells_)
+            -> task<std::size_t> {
+            auto result =
+                co_await algs_.at(static_cast<std::size_t>(slot_))(cells_);
+            co_return result.size();
         };
     } else {
         throw std::invalid_argument("Unknown reconstruction stage");
@@ -214,7 +220,8 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         tbb::global_control::max_allowed_parallelism,
         threading_opts.threads + 1);
     tbb::task_arena arena{static_cast<int>(threading_opts.threads), 0};
-    tbb::task_group group;
+    auto scheduler = task_arena_scheduler{arena};
+    auto scope = counting_scope{};
 
     // Seed the random number generator.
     if (throughput_opts.random_seed == 0u) {
@@ -253,19 +260,24 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             // Get a free concurrent slot.
             size_t slot = std::numeric_limits<size_t>::max();
             concurrent_slots.pop(slot);
+            auto payload = [](auto& algs_, auto& input_, auto& progress_bar_,
+                              auto& rec_track_params_, auto& queue_,
+                              size_t event_, size_t slot_,
+                              auto& process_event_) -> task<void> {
+                auto result = co_await process_event_(
+                    algs_, static_cast<int>(slot_), input_.at(event_));
+                rec_track_params_.fetch_add(result);
+                progress_bar_.tick();
+                queue_.push(slot_);
+            };
             // Launch the processing of the event.
-            arena.execute([&, event, slot]() {
-                group.run([&, event, slot]() {
-                    rec_track_params.fetch_add(
-                        process_event(static_cast<int>(slot), input[event]));
-                    progress_bar.tick();
-                    concurrent_slots.push(slot);
-                });
-            });
+            scope.spawn(scheduler,
+                        payload(algs, input, progress_bar, rec_track_params,
+                                concurrent_slots, event, slot, process_event));
         }
 
         // Wait for all tasks to finish.
-        group.wait();
+        scope.join();
     }
 
     // Reset the dummy counter.
@@ -295,19 +307,24 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             // Get a free slot.
             size_t slot = std::numeric_limits<size_t>::max();
             concurrent_slots.pop(slot);
+            auto payload = [](auto& algs_, auto& input_, auto& progress_bar_,
+                              auto& rec_track_params_, auto& queue_,
+                              size_t event_, size_t slot_,
+                              auto& process_event_) -> task<void> {
+                auto result = co_await process_event_(
+                    algs_, static_cast<int>(slot_), input_.at(event_));
+                rec_track_params_.fetch_add(result);
+                progress_bar_.tick();
+                queue_.push(slot_);
+            };
             // Launch the processing of the event.
-            arena.execute([&, event, slot]() {
-                group.run([&, event, slot]() {
-                    rec_track_params.fetch_add(
-                        process_event(static_cast<int>(slot), input[event]));
-                    progress_bar.tick();
-                    concurrent_slots.push(slot);
-                });
-            });
+            scope.spawn(scheduler,
+                        payload(algs, input, progress_bar, rec_track_params,
+                                concurrent_slots, event, slot, process_event));
         }
 
         // Wait for all tasks to finish.
-        group.wait();
+        scope.join();
     }
 
     // Delete the algorithms explicitly before their parent object would go out
