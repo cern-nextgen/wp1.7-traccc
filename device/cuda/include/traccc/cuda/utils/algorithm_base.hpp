@@ -9,15 +9,13 @@
 
 // Local include(s).
 #include "traccc/cuda/utils/stream.hpp"
+#include "traccc/execution/task.hpp"
 
 // VecMem include(s).
 #include <vecmem/utils/abstract_event.hpp>
 
 // System include(s).
 #include <functional>
-
-// Stdexec include(s).
-#include <exec/task.hpp>
 
 namespace traccc::cuda {
 
@@ -47,17 +45,17 @@ class algorithm_base {
 
 };  // class algorithm_base
 
-using await_function_t = std::function<exec::task<void>(
-    const cuda::stream&, vecmem::abstract_event&)>;
+using await_function_t =
+    std::function<task<void>(const cuda::stream&, vecmem::abstract_event&)>;
 
 // Default await coroutine same as await_event_sync
-exec::task<void> default_await_function(const cuda::stream& stream,
-                            vecmem::abstract_event& event);
-// Await coroutine that synchronizes the stream
-exec::task<void> await_stream_sync(const cuda::stream& stream,
-                                   vecmem::abstract_event& event);
-// Await coroutine that waits on the event
-exec::task<void> await_event_sync(const cuda::stream& stream,
+task<void> default_await_function(const cuda::stream& stream,
                                   vecmem::abstract_event& event);
+// Await coroutine that synchronizes the stream
+task<void> await_stream_sync(const cuda::stream& stream,
+                             vecmem::abstract_event& event);
+// Await coroutine that waits on the event
+task<void> await_event_sync(const cuda::stream& stream,
+                            vecmem::abstract_event& event);
 
 }  // namespace traccc::cuda

@@ -15,6 +15,7 @@
 // Project include(s).
 #include "traccc/cuda/utils/algorithm_base.hpp"
 #include "traccc/cuda/utils/make_magnetic_field.hpp"
+#include "traccc/execution/task.hpp"
 #include "traccc/seeding/detail/track_params_estimation_config.hpp"
 
 // Vecmem include(s).
@@ -22,9 +23,6 @@
 
 // CUDA include(s).
 #include <cuda_runtime_api.h>
-
-// Stdexec include(s).
-#include <exec/task.hpp>
 
 // System include(s).
 #include <iostream>
@@ -250,7 +248,7 @@ full_chain_algorithm::output_type full_chain_algorithm::operator()(
     }
 }
 
-exec::task<bound_track_parameters_collection_types::host>
+task<bound_track_parameters_collection_types::host>
 full_chain_algorithm::seeding(
     const edm::silicon_cell_collection::host& cells) const {
 

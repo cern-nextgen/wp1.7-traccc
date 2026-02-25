@@ -30,7 +30,7 @@ void silicon_pixel_spacepoint_formation_algorithm::form_spacepoints_kernel(
                                    warp_size());
 }
 
-exec::task<void> silicon_pixel_spacepoint_formation_algorithm::await(
+task<void> silicon_pixel_spacepoint_formation_algorithm::await(
     vecmem::abstract_event& event) const {
     co_await m_await_function(stream(), event);
 }

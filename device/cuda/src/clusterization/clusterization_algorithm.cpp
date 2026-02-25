@@ -40,7 +40,7 @@ void clusterization_algorithm::cluster_maker_kernel(
                                      warp_size());
 }
 
-exec::task<void> clusterization_algorithm::await(
+task<void> clusterization_algorithm::await(
     vecmem::abstract_event& event) const {
     co_await m_await_function(stream(), event);
 }

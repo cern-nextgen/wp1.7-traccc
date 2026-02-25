@@ -32,7 +32,7 @@ void seed_parameter_estimation_algorithm::estimate_seed_params_kernel(
                                         warp_size());
 }
 
-exec::task<void> seed_parameter_estimation_algorithm::await(
+task<void> seed_parameter_estimation_algorithm::await(
     vecmem::abstract_event& event) const {
     co_await m_await_function(stream(), event);
 }
