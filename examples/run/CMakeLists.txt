@@ -19,10 +19,10 @@ add_library(traccc_examples_common STATIC
    "common/throughput_st.ipp"
    "common/await_strategy.hpp"
    "common/task_arena_scheduler.hpp"
-   "common/task_arena_scheduler.cpp"
+   "common/inline_scheduler.hpp"
    )
 target_link_libraries(traccc_examples_common
-   PUBLIC traccc::core traccc::options STDEXEC::stdexec TBB::tbb
+   PUBLIC traccc::core traccc::options TBB::tbb
    PRIVATE traccc::io)
 
 # Add all the subdirectories that can be built.

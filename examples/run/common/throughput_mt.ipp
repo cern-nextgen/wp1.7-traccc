@@ -13,6 +13,7 @@
 #include "task_arena_scheduler.hpp"
 
 // Project include(s)
+#include "traccc/execution/counting_scope.hpp"
 #include "traccc/execution/task.hpp"
 #include "traccc/geometry/detector.hpp"
 #include "traccc/geometry/host_detector.hpp"
@@ -53,9 +54,6 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
-
-// Stdexec include(s).
-#include <exec/async_scope.hpp>
 
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
@@ -223,7 +221,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         threading_opts.threads + 1);
     tbb::task_arena arena{static_cast<int>(threading_opts.threads), 0};
     auto scheduler = task_arena_scheduler{arena};
-    auto scope = exec::async_scope{};
+    auto scope = counting_scope{};
 
     // Seed the random number generator.
     if (throughput_opts.random_seed == 0u) {
@@ -273,14 +271,13 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                 queue_.push(slot_);
             };
             // Launch the processing of the event.
-            scope.spawn(stdexec::starts_on(
-                scheduler,
-                payload(algs, input, progress_bar, rec_track_params,
-                        concurrent_slots, event, slot, process_event)));
+            scope.spawn(scheduler,
+                        payload(algs, input, progress_bar, rec_track_params,
+                                concurrent_slots, event, slot, process_event));
         }
 
         // Wait for all tasks to finish.
-        stdexec::sync_wait(scope.on_empty());
+        scope.join();
     }
 
     // Reset the dummy counter.
@@ -321,14 +318,13 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                 queue_.push(slot_);
             };
             // Launch the processing of the event.
-            scope.spawn(stdexec::starts_on(
-                scheduler,
-                payload(algs, input, progress_bar, rec_track_params,
-                        concurrent_slots, event, slot, process_event)));
+            scope.spawn(scheduler,
+                        payload(algs, input, progress_bar, rec_track_params,
+                                concurrent_slots, event, slot, process_event));
         }
 
         // Wait for all tasks to finish.
-        stdexec::sync_wait(scope.on_empty());
+        scope.join();
     }
 
     // Delete the algorithms explicitly before their parent object would go out
