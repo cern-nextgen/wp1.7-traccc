@@ -8,6 +8,9 @@
 // Local include(s).
 #include "full_chain_algorithm.hpp"
 
+// Project include(s).
+#include "traccc/execution/task.hpp"
+
 namespace traccc {
 
 full_chain_algorithm::full_chain_algorithm(
@@ -81,20 +84,21 @@ full_chain_algorithm::output_type full_chain_algorithm::operator()(
             *m_detector, m_field, measurements_view, track_params_view);
 
         // Run the track fitting, and return its results.
-        return m_fitting(*m_detector, m_field,
-                         edm::track_container<default_algebra>::const_data(
-                             track_candidates))
+        co_return m_fitting(
+            *m_detector, m_field,
+            edm::track_container<default_algebra>::const_data(track_candidates))
             .tracks;
     }
     // If not, just return an empty object.
     else {
 
         // Return an empty object.
-        return output_type{m_mr.get()};
+        co_return edm::track_collection<default_algebra>::host{m_mr.get()};
     }
 }
 
-bound_track_parameters_collection_types::host full_chain_algorithm::seeding(
+task<bound_track_parameters_collection_types::host>
+full_chain_algorithm::seeding(
     const edm::silicon_cell_collection::host& cells) const {
 
     // Create a data object for the detector description.
@@ -120,14 +124,14 @@ bound_track_parameters_collection_types::host full_chain_algorithm::seeding(
             m_seeding(spacepoints_data);
         const edm::seed_collection::const_data seeds_data =
             vecmem::get_data(seeds);
-        return m_track_parameter_estimation(measurements_view, spacepoints_data,
-                                            seeds_data, m_field_vec);
+        co_return m_track_parameter_estimation(
+            measurements_view, spacepoints_data, seeds_data, m_field_vec);
     }
     // If not, just return an empty object.
     else {
 
         // Return an empty object.
-        return {};
+        co_return {};
     }
 }
 

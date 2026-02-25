@@ -8,8 +8,7 @@
 // Local include(s).
 #include "../utils/cuda_error_handling.hpp"
 #include "../utils/global_index.hpp"
-#include "../utils/utils.hpp"
-#include "traccc/cuda/seeding/silicon_pixel_spacepoint_formation_algorithm.hpp"
+#include "silicon_pixel_spacepoint_formation_kernel.hpp"
 
 // Project include(s).
 #include "traccc/geometry/detector.hpp"
@@ -33,34 +32,22 @@ __global__ void __launch_bounds__(1024, 1) form_spacepoints(
 
 }  // namespace kernels
 
-silicon_pixel_spacepoint_formation_algorithm::
-    silicon_pixel_spacepoint_formation_algorithm(
-        const traccc::memory_resource& mr, vecmem::copy& copy,
-        cuda::stream& str, std::unique_ptr<const Logger> logger,
-        await_function_t await_func)
-    : device::silicon_pixel_spacepoint_formation_algorithm(mr, copy,
-                                                           std::move(logger)),
-      cuda::algorithm_base(str),
-      m_await_function(await_func) {}
+void launch_form_spacepoints_kernel(
+    const traccc::device::silicon_pixel_spacepoint_formation_kernel_payload&
+        payload,
+    cudaStream_t stream, unsigned int warp_size) {
 
-void silicon_pixel_spacepoint_formation_algorithm::form_spacepoints_kernel(
-    const form_spacepoints_kernel_payload& payload) const {
-
-    const unsigned int n_threads = warp_size() * 8;
+    const unsigned int n_threads = warp_size * 8;
     const unsigned int n_blocks =
         (payload.n_measurements + n_threads - 1) / n_threads;
     detector_buffer_visitor<detector_type_list>(
         payload.detector, [&]<typename detector_traits_t>(
                               const typename detector_traits_t::view& det) {
             kernels::form_spacepoints<detector_traits_t>
-                <<<n_blocks, n_threads, 0, details::get_stream(stream())>>>(
-                    det, payload.measurements, payload.spacepoints);
+                <<<n_blocks, n_threads, 0, stream>>>(det, payload.measurements,
+                                                     payload.spacepoints);
         });
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
-}
-
-void silicon_pixel_spacepoint_formation_algorithm::await() const {
-    m_await_function(stream());
 }
 
 }  // namespace traccc::cuda

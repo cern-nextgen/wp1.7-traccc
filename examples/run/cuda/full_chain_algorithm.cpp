@@ -9,10 +9,12 @@
 #include "full_chain_algorithm.hpp"
 
 #include "../common/await_strategy.hpp"
+#include "suspend_exec.hpp"
 
 // Project include(s).
 #include "traccc/cuda/utils/algorithm_base.hpp"
 #include "traccc/cuda/utils/make_magnetic_field.hpp"
+#include "traccc/execution/task.hpp"
 #include "traccc/seeding/detail/track_params_estimation_config.hpp"
 
 // CUDA include(s).
@@ -38,6 +40,9 @@ await_strategy_helper::await_strategy_helper(await_strategy await_mode) {
     switch (await_mode) {
         case await_strategy::sync:
             m_await = default_await_function;
+            break;
+        case await_strategy::suspend:
+            m_await = suspend_exec;
             break;
         default:
             throw std::invalid_argument("Unknown await strategy");
@@ -196,18 +201,18 @@ full_chain_algorithm::output_type full_chain_algorithm::operator()(
 
     // Run the clusterization (asynchronously).
     const auto unsorted_measurements =
-        m_clusterization(cells_buffer, m_device_det_descr);
+        co_await m_clusterization(cells_buffer, m_device_det_descr);
     const measurement_sorting_algorithm::output_type measurements =
         m_measurement_sorting(unsorted_measurements);
 
     // If we have a Detray detector, run the seeding, track finding and fitting.
     if (m_detector != nullptr) {
         // Run the seed-finding (asynchronously).
-        const spacepoint_formation_algorithm::output_type spacepoints =
-            m_spacepoint_formation(m_device_detector, measurements);
-        const seed_parameter_estimation_algorithm::output_type track_params =
-            m_track_parameter_estimation(m_field, measurements, spacepoints,
-                                         m_seeding(spacepoints));
+        const auto spacepoints =
+            co_await m_spacepoint_formation(m_device_detector, measurements);
+        const auto seeds = co_await m_seeding(spacepoints);
+        const auto track_params = co_await m_track_parameter_estimation(
+            m_field, measurements, spacepoints, seeds);
 
         // Run the track finding (asynchronously).
         const finding_algorithm::output_type track_candidates =
@@ -217,10 +222,10 @@ full_chain_algorithm::output_type full_chain_algorithm::operator()(
         const auto host_tracks =
             m_copy.to(track_candidates.tracks, m_cached_pinned_host_mr, nullptr,
                       vecmem::copy::type::device_to_host);
-        output_type result{m_host_mr};
+        edm::track_collection<default_algebra>::host result{m_host_mr};
         vecmem::copy host_copy;
         host_copy(host_tracks, result)->wait();
-        return result;
+        co_return result;
 
     }
     // If not, copy the measurements back to the host, and return a dummy
@@ -233,11 +238,12 @@ full_chain_algorithm::output_type full_chain_algorithm::operator()(
         m_copy(measurements, measurements_host)->wait();
 
         // Return an empty object.
-        return output_type{m_host_mr};
+        co_return edm::track_collection<default_algebra>::host{m_host_mr};
     }
 }
 
-bound_track_parameters_collection_types::host full_chain_algorithm::seeding(
+task<bound_track_parameters_collection_types::host>
+full_chain_algorithm::seeding(
     const edm::silicon_cell_collection::host& cells) const {
 
     // Create device copy of input collections
@@ -247,7 +253,7 @@ bound_track_parameters_collection_types::host full_chain_algorithm::seeding(
 
     // Run the clusterization (asynchronously).
     const auto unsorted_measurements =
-        m_clusterization(cells_buffer, m_device_det_descr);
+        co_await m_clusterization(cells_buffer, m_device_det_descr);
     const measurement_sorting_algorithm::output_type measurements =
         m_measurement_sorting(unsorted_measurements);
 
@@ -255,11 +261,11 @@ bound_track_parameters_collection_types::host full_chain_algorithm::seeding(
     if (m_detector != nullptr) {
 
         // Run the seed-finding (asynchronously).
-        const spacepoint_formation_algorithm::output_type spacepoints =
-            m_spacepoint_formation(m_device_detector, measurements);
-        const seed_parameter_estimation_algorithm::output_type track_params =
-            m_track_parameter_estimation(m_field, measurements, spacepoints,
-                                         m_seeding(spacepoints));
+        const auto spacepoints =
+            co_await m_spacepoint_formation(m_device_detector, measurements);
+        const auto seeds = co_await m_seeding(spacepoints);
+        const auto track_params = co_await m_track_parameter_estimation(
+            m_field, measurements, spacepoints, seeds);
 
         // Copy a limited amount of result data back to the host.
         const auto host_seeds = m_copy.to(track_params, m_cached_pinned_host_mr,
@@ -267,7 +273,7 @@ bound_track_parameters_collection_types::host full_chain_algorithm::seeding(
         bound_track_parameters_collection_types::host result{&m_host_mr};
         vecmem::copy host_copy;
         host_copy(host_seeds, result)->wait();
-        return result;
+        co_return result;
 
     }
     // If not, copy the measurements back to the host, and return a dummy
@@ -280,7 +286,7 @@ bound_track_parameters_collection_types::host full_chain_algorithm::seeding(
         m_copy(measurements, measurements_host)->wait();
 
         // Return an empty object.
-        return {};
+        co_return {};
     }
 }
 

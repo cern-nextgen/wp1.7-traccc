@@ -28,7 +28,7 @@ auto silicon_pixel_spacepoint_formation_algorithm::operator()(
         vecmem::async_size size = copy().get_size(measurements, *(mr().host));
         // Here we could give control back to the caller, once our code allows
         // for it. (coroutines...)<-WIP
-        await();
+        co_await await();
         n_measurements = size.get();
     } else {
         n_measurements = copy().get_size(measurements);
@@ -36,7 +36,7 @@ auto silicon_pixel_spacepoint_formation_algorithm::operator()(
 
     // If there are no measurements, return right away.
     if (n_measurements == 0) {
-        return {};
+        co_return {};
     }
 
     // Create the result buffer.
@@ -48,7 +48,7 @@ auto silicon_pixel_spacepoint_formation_algorithm::operator()(
     form_spacepoints_kernel({n_measurements, det, measurements, spacepoints});
 
     // Return the reconstructed spacepoints.
-    return spacepoints;
+    co_return spacepoints;
 }
 
 }  // namespace traccc::device

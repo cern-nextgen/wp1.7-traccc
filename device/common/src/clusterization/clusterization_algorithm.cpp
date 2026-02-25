@@ -32,42 +32,44 @@ clusterization_algorithm::clusterization_algorithm(
         ->wait();
 }
 
-edm::measurement_collection<default_algebra>::buffer
+task<edm::measurement_collection<default_algebra>::buffer>
 clusterization_algorithm::operator()(
     const edm::silicon_cell_collection::const_view& cells,
     const silicon_detector_description::const_view& det_descr) const {
 
-    return this->operator()(cells, det_descr,
-                            clustering_discard_disjoint_set{});
+    co_return co_await this->operator()(cells, det_descr,
+                                        clustering_discard_disjoint_set{});
 }
 
-edm::measurement_collection<default_algebra>::buffer
+task<edm::measurement_collection<default_algebra>::buffer>
 clusterization_algorithm::operator()(
     const edm::silicon_cell_collection::const_view& cells,
     const silicon_detector_description::const_view& det_descr,
     clustering_discard_disjoint_set&&) const {
 
     static constexpr bool KEEP_DISJOINT_SET = false;
-    auto [res, djs] = this->execute_impl(cells, det_descr, KEEP_DISJOINT_SET);
+    auto [res, djs] =
+        co_await this->execute_impl(cells, det_descr, KEEP_DISJOINT_SET);
     assert(!djs.has_value());
-    return std::move(res);
+    co_return std::move(res);
 }
 
-std::pair<edm::measurement_collection<default_algebra>::buffer,
-          edm::silicon_cluster_collection::buffer>
+task<std::pair<edm::measurement_collection<default_algebra>::buffer,
+               edm::silicon_cluster_collection::buffer>>
 clusterization_algorithm::operator()(
     const edm::silicon_cell_collection::const_view& cells,
     const silicon_detector_description::const_view& det_descr,
     clustering_keep_disjoint_set&&) const {
 
     static constexpr bool KEEP_DISJOINT_SET = true;
-    auto [res, djs] = this->execute_impl(cells, det_descr, KEEP_DISJOINT_SET);
+    auto [res, djs] =
+        co_await this->execute_impl(cells, det_descr, KEEP_DISJOINT_SET);
     assert(djs.has_value());
-    return {std::move(res), std::move(*djs)};
+    co_return {std::move(res), std::move(*djs)};
 }
 
-std::pair<edm::measurement_collection<default_algebra>::buffer,
-          std::optional<edm::silicon_cluster_collection::buffer>>
+task<std::pair<edm::measurement_collection<default_algebra>::buffer,
+               std::optional<edm::silicon_cluster_collection::buffer>>>
 clusterization_algorithm::execute_impl(
     const edm::silicon_cell_collection::const_view& cells,
     const silicon_detector_description::const_view& det_descr,
@@ -82,7 +84,7 @@ clusterization_algorithm::execute_impl(
         const vecmem::async_size size = copy().get_size(cells, *(mr().host));
         // Here we could give control back to the caller, once our code allows
         // for it. (coroutines...)<-WIP
-        await();
+        co_await await();
         num_cells = size.get();
     } else {
         num_cells = copy().get_size(cells);
@@ -91,10 +93,10 @@ clusterization_algorithm::execute_impl(
     // If there are no cells, return right away.
     if (num_cells == 0) {
         if (keep_disjoint_set) {
-            return {edm::measurement_collection<default_algebra>::buffer{},
-                    edm::silicon_cluster_collection::buffer{}};
+            co_return {edm::measurement_collection<default_algebra>::buffer{},
+                       edm::silicon_cluster_collection::buffer{}};
         } else {
-            return {};
+            co_return {};
         }
     }
 
@@ -140,7 +142,7 @@ clusterization_algorithm::execute_impl(
                 copy().get_size(measurements, *(mr().host));
             // Here we could give control back to the caller, once our code
             // allows for it. (coroutines...)<-WIP
-            await();
+            co_await await();
             num_measurements = size.get();
         } else {
             num_measurements = copy().get_size(measurements);
@@ -165,7 +167,7 @@ clusterization_algorithm::execute_impl(
     }
 
     // Return the reconstructed measurements.
-    return {std::move(measurements), std::move(cluster_data)};
+    co_return {std::move(measurements), std::move(cluster_data)};
 }
 
 }  // namespace traccc::device

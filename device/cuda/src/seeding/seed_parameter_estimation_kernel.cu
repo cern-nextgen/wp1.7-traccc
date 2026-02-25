@@ -10,7 +10,7 @@
 #include "../utils/global_index.hpp"
 #include "../utils/magnetic_field_types.hpp"
 #include "../utils/utils.hpp"
-#include "traccc/cuda/seeding/seed_parameter_estimation_algorithm.hpp"
+#include "seed_parameter_estimation_kernel.hpp"
 
 // Project include(s).
 #include "traccc/seeding/device/estimate_track_params.hpp"
@@ -34,32 +34,19 @@ __global__ void estimate_track_params(
 
 }  // namespace kernels
 
-seed_parameter_estimation_algorithm::seed_parameter_estimation_algorithm(
-    const track_params_estimation_config& config,
-    const traccc::memory_resource& mr, vecmem::copy& copy, cuda::stream& str,
-    std::unique_ptr<const Logger> logger, await_function_t await_func)
-    : device::seed_parameter_estimation_algorithm(config, mr, copy,
-                                                  std::move(logger)),
-      cuda::algorithm_base(str),
-      m_await_function(await_func) {}
-
-void seed_parameter_estimation_algorithm::estimate_seed_params_kernel(
-    const struct estimate_seed_params_kernel_payload& payload) const {
-
-    const unsigned int n_threads = warp_size() * 4;
+void launch_estimate_track_params_kernel(
+    const traccc::device::estimate_seed_params_kernel_payload& payload,
+    cudaStream_t stream, unsigned int warp_size) {
+    const unsigned int n_threads = warp_size * 4;
     const unsigned int n_blocks = (payload.n_seeds + n_threads - 1) / n_threads;
     magnetic_field_visitor<bfield_type_list<scalar>>(
         payload.bfield,
         [&]<typename bfield_view_t>(const bfield_view_t& bfield) {
             kernels::estimate_track_params<default_algebra>
-                <<<n_blocks, n_threads, 0, details::get_stream(stream())>>>(
+                <<<n_blocks, n_threads, 0, stream>>>(
                     payload.config, payload.measurements, payload.spacepoints,
                     payload.seeds, bfield, payload.params);
         });
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
-}
-
-void seed_parameter_estimation_algorithm::await() const {
-    m_await_function(stream());
 }
 }  // namespace traccc::cuda

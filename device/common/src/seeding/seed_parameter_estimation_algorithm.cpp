@@ -41,7 +41,7 @@ auto seed_parameter_estimation_algorithm::operator()(
         const vecmem::async_size size = copy().get_size(seeds, *(mr().host));
         // Here we could give control back to the caller, once our code allows
         // for it. (coroutines...)<-WIP
-        await();
+        co_await await();
         n_seeds = size.get();
     } else {
         n_seeds = copy().get_size(seeds);
@@ -49,7 +49,7 @@ auto seed_parameter_estimation_algorithm::operator()(
 
     // If there are no seeds, return right away.
     if (n_seeds == 0) {
-        return {};
+        co_return {};
     }
 
     // Set up the output buffer.
@@ -61,7 +61,7 @@ auto seed_parameter_estimation_algorithm::operator()(
                                  measurements, spacepoints, seeds, result});
 
     // Return the result.
-    return result;
+    co_return result;
 }
 
 }  // namespace traccc::device
