@@ -9,6 +9,8 @@
 
 // Local include(s).
 #include "traccc/device/algorithm_base.hpp"
+#include "traccc/execution/task.hpp"
+#include "traccc/seeding/device/seed_parameter_estimation_kernel_payload.hpp"
 
 // Project include(s)
 #include "traccc/bfield/magnetic_field.hpp"
@@ -29,7 +31,7 @@ namespace traccc::device {
 /// synchronisation statement is required before destroying this buffer.
 ///
 struct seed_parameter_estimation_algorithm
-    : public algorithm<bound_track_parameters_collection_types::buffer(
+    : public algorithm<task<bound_track_parameters_collection_types::buffer>(
           const magnetic_field&,
           const edm::measurement_collection<default_algebra>::const_view&,
           const edm::spacepoint_collection::const_view&,
@@ -59,7 +61,8 @@ struct seed_parameter_estimation_algorithm
     /// @param measurements All measurements of the event
     /// @param spacepoints All spacepoints of the event
     /// @param seeds The reconstructed track seeds of the event
-    /// @return A vector of bound track parameters for the seeds
+    /// @return A task returning a vector of bound track parameters for the
+    /// seeds
     ///
     output_type operator()(
         const magnetic_field& bfield,
@@ -73,35 +76,20 @@ struct seed_parameter_estimation_algorithm
     /// @{
 
     /// Payload for the @c estimate_seed_params_kernel function
-    struct estimate_seed_params_kernel_payload {
-        /// The number of seeds
-        edm::seed_collection::const_view::size_type n_seeds;
-        /// The track parameter estimation configuration
-        const track_params_estimation_config& config;
-        /// The magnetic field object
-        const magnetic_field& bfield;
-        /// All measurements of the event
-        const edm::measurement_collection<default_algebra>::const_view&
-            measurements;
-        /// All spacepoints of the event
-        const edm::spacepoint_collection::const_view& spacepoints;
-        /// The reconstructed track seeds of the event
-        const edm::seed_collection::const_view& seeds;
-        /// The output buffer for the bound track parameters
-        bound_track_parameters_collection_types::view& params;
-    };
+    using estimate_seed_params_kernel_payload =
+        struct traccc::device::estimate_seed_params_kernel_payload;
 
     /// Seed parameter estimation kernel launcher
     ///
     /// @param payload The payload for the kernel
     ///
     virtual void estimate_seed_params_kernel(
-        const struct estimate_seed_params_kernel_payload& payload) const = 0;
+        const estimate_seed_params_kernel_payload& payload) const = 0;
 
     /// @}
 
     /// Possibly suspend execution until all asynchronous operations are done
-    virtual void await() const = 0;
+    virtual task<void> await() const = 0;
 
     private:
     /// Internal data type
