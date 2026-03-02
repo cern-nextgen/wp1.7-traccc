@@ -32,8 +32,8 @@ class stream_await_sender {
     class stream_await_operation;
 
     using sender_concept = stdexec::sender_t;
-    using completion_signatures = stdexec::completion_signatures<
-        stdexec::set_value_t(void), stdexec::set_error_t(std::exception_ptr)>;
+    using completion_signatures =
+        stdexec::completion_signatures<stdexec::set_value_t(cudaError_t)>;
 
     stream_await_sender(const cudaStream_t stream) : m_stream(stream) {}
     stdexec::env<> get_env() const noexcept { return {}; }
@@ -59,11 +59,11 @@ class stream_await_sender::stream_await_operation {
         : m_receiver(std::forward<Receiver>(recv)), m_stream(stream) {}
 
     void start() & noexcept {
-        try {
-            CUDA_ERROR_CHECK(
-                cudaLaunchHostFunc(m_stream, callback, &m_receiver));
-        } catch (...) {
-            stdexec::set_error(std::move(m_receiver), std::current_exception());
+
+        auto error = cudaLaunchHostFunc(m_stream, callback, &m_receiver);
+        // resume immediately if the callback could not be registered
+        if (error != cudaSuccess) {
+            stdexec::set_value(std::move(m_receiver), error);
         }
     }
 
@@ -71,15 +71,9 @@ class stream_await_sender::stream_await_operation {
     std::remove_cvref_t<Receiver> m_receiver;
     cudaStream_t m_stream;
 
-    static void callback(void* userData) {
+    static void callback(void* userData) noexcept {
         auto& recv = *static_cast<Receiver*>(userData);
-        try {
-            CUDA_ERROR_CHECK(cudaGetLastError());
-            stdexec::set_value(std::move(recv));
-        } catch (...) {
-            stdexec::set_error(std::move(recv), std::current_exception());
-            return;
-        }
+        stdexec::set_value(recv, cudaSuccess);
     }
 };
 
@@ -87,7 +81,7 @@ static_assert(stdexec::sender<stream_await_sender>);
 
 task<void> suspend_exec(const cuda::stream& stream) {
     auto cuda_stream = static_cast<cudaStream_t>(stream.cudaStream());
-    co_await stream_await_sender{cuda_stream};
+    CUDA_ERROR_CHECK(co_await stream_await_sender{cuda_stream});
     co_return;
 }
 
