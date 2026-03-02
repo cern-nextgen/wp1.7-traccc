@@ -26,14 +26,20 @@ class StreamAwaitable {
     explicit StreamAwaitable(cudaStream_t stream) : m_stream(stream) {}
     bool await_ready() const noexcept { return false; }
     template <typename T>
-    void await_suspend(std::coroutine_handle<T> handle) const {
-        CUDA_ERROR_CHECK(
-            cudaLaunchHostFunc(m_stream, callback<T>, handle.address()));
+    void await_suspend(std::coroutine_handle<T> handle) {
+        auto error =
+            cudaLaunchHostFunc(m_stream, callback<T>, handle.address());
+        if (error != cudaSuccess) {
+            // resume immediately if the callback could not be registered
+            m_error = error;
+            handle.promise().reschedule();
+        }
     }
-    void await_resume() const noexcept {}
+    cudaError_t await_resume() const noexcept { return m_error; }
 
     private:
     cudaStream_t m_stream;
+    cudaError_t m_error = cudaSuccess;
 
     template <typename T>
     static void callback(void* context) {
@@ -44,7 +50,7 @@ class StreamAwaitable {
 
 task<void> suspend_exec(const cuda::stream& stream) {
     auto cuda_stream = static_cast<cudaStream_t>(stream.cudaStream());
-    co_await StreamAwaitable{cuda_stream};
+    CUDA_ERROR_CHECK(co_await StreamAwaitable{cuda_stream});
     co_return;
 }
 
