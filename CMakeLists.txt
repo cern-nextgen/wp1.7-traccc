@@ -421,23 +421,23 @@ if( TRACCC_SETUP_INDICATORS )
    endif()
 endif()
 
-# Set up stdexec.
-option( TRACCC_SETUP_STDEXEC
-   "Set up the stdexec target(s) explicitly" TRUE )
+# Set up Boost.Capy.
+option( TRACCC_SETUP_CAPY
+   "Set up the Boost.Capy target(s) explicitly" TRUE )
 if (TRACCC_USE_SYSTEM_LIBS OR TRACCC_USE_SPACK_LIBS)
-   set(TRACCC_USE_SYSTEM_STDEXEC_DEFAULT ON)
+   set(TRACCC_USE_SYSTEM_CAPY_DEFAULT ON)
 else()
-   set(TRACCC_USE_SYSTEM_STDEXEC_DEFAULT OFF)
+   set(TRACCC_USE_SYSTEM_CAPY_DEFAULT OFF)
 endif()
-option( TRACCC_USE_SYSTEM_STDEXEC
-   "Pick up an existing installation of stdexec from the build environment"
-   ${TRACCC_USE_SYSTEM_STDEXEC_DEFAULT} )
-unset(TRACCC_USE_SYSTEM_STDEXEC_DEFAULT)
-if( TRACCC_SETUP_STDEXEC )
-   if( TRACCC_USE_SYSTEM_STDEXEC )
-      find_package( stdexec REQUIRED )
+option( TRACCC_USE_SYSTEM_CAPY
+   "Pick up an existing installation of capy from the build environment"
+   ${TRACCC_USE_SYSTEM_CAPY_DEFAULT} )
+unset(TRACCC_USE_SYSTEM_CAPY_DEFAULT)
+if( TRACCC_SETUP_CAPY )
+   if( TRACCC_USE_SYSTEM_CAPY )
+      find_package( capy REQUIRED )
    else()
-      add_subdirectory( extern/stdexec )
+      add_subdirectory( extern/capy )
    endif()
 endif()
 

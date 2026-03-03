@@ -10,8 +10,8 @@
 // Tbb include(s).
 #include <tbb/concurrent_queue.h>
 
-// Stdexec include(s).
-#include <exec/task.hpp>
+// Boost.Capy include(s).
+#include <boost/capy.hpp>
 
 // System include(s).
 #include <functional>
@@ -71,77 +71,46 @@ class threadpool {
 
 std::ostream& operator<<(std::ostream& os, threadpool::wait_policy policy);
 
-/// Wrapper around a threadpool to be used as a scheduler for stdexec.
-class threadpool_scheduler {
+class threadpool_executor {
+
     public:
-    using scheduler_concept = stdexec::scheduler_t;
-
-    /// Construct a threadpool_scheduler that uses the given threadpool.
-    /// @param threadpool The threadpool to use for scheduling.
-    ///
-    /// @note The threadpool_scheduler does not take ownership of the
-    /// threadpool, the threadpool should remain valid for the lifetime of the
-    /// scheduler.
-    ///
-    threadpool_scheduler(threadpool& pool);
-
-    class env {
+    class threadpool_context : public boost::capy::execution_context {
         public:
-        env(threadpool* pool) noexcept;
+        threadpool_context(threadpool& pool) : m_threadpool(&pool) {}
 
-        template <typename T>
-        auto query(
-            const stdexec::get_completion_scheduler_t<T>&) const noexcept {
-            return threadpool_scheduler{*m_threadpool};
+        void schedule(std::coroutine_handle<> h) const {
+            m_threadpool->enqueue([h]() { h.resume(); });
+        }
+        bool operator==(const threadpool_context& other) const noexcept {
+            return m_threadpool == other.m_threadpool;
         }
 
         private:
-        threadpool* m_threadpool;  /// non-owning pointer to the threadpool
-    };
-
-    template <stdexec::receiver Receiver>
-    class operation {
-        public:
-        using operation_state_concept = stdexec::operation_state_t;
-
-        operation(Receiver&& receiver, threadpool* pool) noexcept
-            : m_receiver(std::forward<Receiver>(receiver)),
-              m_threadpool(pool) {}
-
-        void start() & noexcept {
-            m_threadpool->enqueue(
-                [this]() { stdexec::set_value(std::move(m_receiver)); });
-        }
-
-        private:
-        std::remove_cvref_t<Receiver> m_receiver;
         threadpool* m_threadpool;
     };
 
-    class sender {
-        public:
-        using sender_concept = stdexec::sender_t;
-        using completion_signatures =
-            stdexec::completion_signatures<stdexec::set_value_t()>;
+    threadpool_executor(threadpool_context& context) noexcept
+        : m_context(&context) {
+        static_assert(boost::capy::Executor<threadpool_executor>,
+                      "threadpool_executor should be a valid capy Executor");
+    }
 
-        sender(threadpool* pool) noexcept;
-        env get_env() const noexcept;
+    threadpool_executor(threadpool_executor const&) noexcept = default;
 
-        template <stdexec::receiver Receiver>
-        auto connect(Receiver&& receiver) {
-            return operation<Receiver>(std::forward<Receiver>(receiver),
-                                       m_threadpool);
-        }
-
-        private:
-        threadpool* m_threadpool;  /// non-owning pointer to the threadpool
-    };
-
-    sender schedule() const noexcept;
-    bool operator==(const threadpool_scheduler& other) const = default;
+    std::coroutine_handle<> dispatch(std::coroutine_handle<> h) const {
+        m_context->schedule(h);
+        return std::noop_coroutine();
+    }
+    void post(std::coroutine_handle<> h) const { m_context->schedule(h); }
+    threadpool_context& context() const noexcept { return *m_context; }
+    void on_work_started() const noexcept {}
+    void on_work_finished() const noexcept {}
+    bool operator==(const threadpool_executor& other) const noexcept {
+        return m_context == other.m_context;
+    }
 
     private:
-    threadpool* m_threadpool = nullptr;
+    threadpool_context* m_context;
 };
 
 }  // namespace traccc

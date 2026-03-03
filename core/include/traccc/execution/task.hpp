@@ -1,10 +1,10 @@
 #pragma once
 
-// Stdexec include(s).
-#include <exec/task.hpp>
+// Boost.Capy include(s).
+#include <boost/capy.hpp>
 
 namespace traccc {
 
 template <typename T>
-using task = exec::task<T>;
+using task = boost::capy::task<T>;
 }

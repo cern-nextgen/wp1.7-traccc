@@ -92,25 +92,4 @@ std::ostream& operator<<(std::ostream& os, threadpool::wait_policy policy) {
     return os;
 }
 
-threadpool_scheduler::threadpool_scheduler(threadpool& pool)
-    : m_threadpool(&pool) {}
-
-threadpool_scheduler::sender threadpool_scheduler::schedule() const noexcept {
-    return sender{m_threadpool};
-}
-
-threadpool_scheduler::env::env(threadpool* pool) noexcept
-    : m_threadpool(pool) {}
-
-threadpool_scheduler::sender::sender(threadpool* pool) noexcept
-    : m_threadpool(pool) {}
-
-threadpool_scheduler::env threadpool_scheduler::sender::get_env()
-    const noexcept {
-    return env{m_threadpool};
-}
-
-static_assert(stdexec::scheduler<threadpool_scheduler>,
-              "threadpool_scheduler should model scheduler");
-
 }  // namespace traccc
