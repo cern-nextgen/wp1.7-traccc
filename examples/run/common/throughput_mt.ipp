@@ -10,7 +10,7 @@
 // Local include(s).
 #include "await_strategy.hpp"
 #include "make_magnetic_field.hpp"
-#include "task_arena_scheduler.hpp"
+#include "task_arena_executor.hpp"
 
 // Project include(s)
 #include "traccc/execution/task.hpp"
@@ -54,14 +54,15 @@
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
 
-// Stdexec include(s).
-#include <exec/async_scope.hpp>
+// Boost.Capy include(s).
+#include <boost/capy.hpp>
 
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
 
 // System include(s).
 #include <atomic>
+#include <condition_variable>
 #include <cstdlib>
 #include <ctime>
 #include <fstream>
@@ -69,6 +70,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace traccc {
@@ -222,8 +224,8 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         tbb::global_control::max_allowed_parallelism,
         threading_opts.threads + 1);
     tbb::task_arena arena{static_cast<int>(threading_opts.threads), 0};
-    auto scheduler = task_arena_scheduler{arena};
-    auto scope = exec::async_scope{};
+    auto context = task_arena_executor::task_arena_context{arena};
+    auto executor = task_arena_executor{context};
 
     // Seed the random number generator.
     if (throughput_opts.random_seed == 0u) {
@@ -239,6 +241,20 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     // Cold Run events. To discard any "initialisation issues" in the
     // measurements.
     {
+        // Set up handler for the executor.
+        size_t remaining_events = throughput_opts.cold_run_events;
+        std::mutex mutex;
+        std::condition_variable cond_variable;
+        auto handler = [&remaining_events, &mutex, &cond_variable]() {
+            auto remains = [&]() {
+                std::lock_guard lock(mutex);
+                return --remaining_events;
+            }();
+            if (remains == 0) {
+                cond_variable.notify_all();
+            }
+        };
+
         // Set up a progress bar for the warm-up processing.
         indicators::ProgressBar progress_bar{
             indicators::option::BarWidth{50},
@@ -273,20 +289,37 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                 queue_.push(slot_);
             };
             // Launch the processing of the event.
-            scope.spawn(stdexec::starts_on(
-                scheduler,
+            boost::capy::run_async(executor, handler)(
                 payload(algs, input, progress_bar, rec_track_params,
-                        concurrent_slots, event, slot, process_event)));
+                        concurrent_slots, event, slot, process_event));
         }
 
         // Wait for all tasks to finish.
-        stdexec::sync_wait(scope.on_empty());
+        {
+            std::unique_lock lock(mutex);
+            cond_variable.wait(
+                lock, [&remaining_events] { return remaining_events == 0; });
+        }
     }
 
     // Reset the dummy counter.
     rec_track_params = 0;
 
     {
+        // Set up handler for the executor.
+        size_t remaining_events = throughput_opts.processed_events;
+        std::mutex mutex;
+        std::condition_variable cond_variable;
+        auto handler = [&remaining_events, &mutex, &cond_variable]() {
+            auto remains = [&]() {
+                std::lock_guard lock(mutex);
+                return --remaining_events;
+            }();
+            if (remains == 0) {
+                cond_variable.notify_all();
+            }
+        };
+
         // Set up a progress bar for the event processing.
         indicators::ProgressBar progress_bar{
             indicators::option::BarWidth{50},
@@ -321,14 +354,17 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                 queue_.push(slot_);
             };
             // Launch the processing of the event.
-            scope.spawn(stdexec::starts_on(
-                scheduler,
+            boost::capy::run_async(executor, handler)(
                 payload(algs, input, progress_bar, rec_track_params,
-                        concurrent_slots, event, slot, process_event)));
+                        concurrent_slots, event, slot, process_event));
         }
 
         // Wait for all tasks to finish.
-        stdexec::sync_wait(scope.on_empty());
+        {
+            std::unique_lock lock(mutex);
+            cond_variable.wait(
+                lock, [&remaining_events] { return remaining_events == 0; });
+        }
     }
 
     // Delete the algorithms explicitly before their parent object would go out
