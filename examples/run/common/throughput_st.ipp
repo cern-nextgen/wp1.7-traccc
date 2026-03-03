@@ -46,16 +46,17 @@
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
 
-// Stdexec include(s).
-#include <exec/inline_scheduler.hpp>
-#include <stdexec/execution.hpp>
+// Boost.Capy include(s).
+#include <boost/capy.hpp>
 
 // System include(s).
+#include <condition_variable>
 #include <cstdlib>
 #include <ctime>
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <mutex>
 
 namespace traccc {
 
@@ -181,8 +182,8 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
         throw std::invalid_argument("Unknown reconstruction stage");
     }
 
-    // Set up a scheduler executing the tasks on the current thread.
-    stdexec::inline_scheduler scheduler;
+    // Set up an execution context.
+    boost::capy::thread_pool thread(1);
 
     // Dummy count uses output of tp algorithm to ensure the compiler
     // optimisations don't skip any step
@@ -205,6 +206,21 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
         // Process the requested number of events.
         for (std::size_t i = 0; i < throughput_opts.cold_run_events; ++i) {
 
+            // Set up a completion handler for the executor.
+            std::mutex mutex;
+            std::condition_variable cond_variable;
+            bool done = false;
+            std::size_t result = 0;
+
+            auto handler = [&mutex, &cond_variable, &done,
+                            &result](std::size_t res) {
+                {
+                    std::lock_guard lock(mutex);
+                    result = res;
+                    done = true;
+                }
+                cond_variable.notify_one();
+            };
             // Choose which event to process.
             const std::size_t event =
                 (throughput_opts.deterministic_event_order
@@ -213,12 +229,13 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            auto result = stdexec::sync_wait(stdexec::starts_on(
-                scheduler, process_event(alg.get(), input[event])));
-            if (!result.has_value()) {
-                throw std::runtime_error("Task execution failed");
+            boost::capy::run_async(thread.get_executor(), handler)(
+                process_event(alg.get(), input[event]));
+            {
+                std::unique_lock lock(mutex);
+                cond_variable.wait(lock, [&done] { return done; });
             }
-            rec_track_params += std::get<0>(result.value());
+            rec_track_params += result;
             progress_bar.tick();
         }
     }
@@ -241,6 +258,21 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
         // Process the requested number of events.
         for (std::size_t i = 0; i < throughput_opts.processed_events; ++i) {
 
+            // Set up a completion handler for the executor.
+            std::mutex mutex;
+            std::condition_variable cond_variable;
+            bool done = false;
+            std::size_t result = 0;
+
+            auto handler = [&mutex, &cond_variable, &done,
+                            &result](std::size_t res) {
+                {
+                    std::lock_guard lock(mutex);
+                    result = res;
+                    done = true;
+                }
+                cond_variable.notify_one();
+            };
             // Choose which event to process.
             const std::size_t event =
                 (throughput_opts.deterministic_event_order
@@ -249,12 +281,13 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            auto result = stdexec::sync_wait(stdexec::starts_on(
-                scheduler, process_event(alg.get(), input[event])));
-            if (!result.has_value()) {
-                throw std::runtime_error("Task execution failed");
+            boost::capy::run_async(thread.get_executor(), handler)(
+                process_event(alg.get(), input[event]));
+            {
+                std::unique_lock lock(mutex);
+                cond_variable.wait(lock, [&done] { return done; });
             }
-            rec_track_params += std::get<0>(result.value());
+            rec_track_params += result;
             progress_bar.tick();
         }
     }
