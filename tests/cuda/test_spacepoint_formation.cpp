@@ -19,6 +19,10 @@
 #include <vecmem/memory/host_memory_resource.hpp>
 #include <vecmem/utils/cuda/async_copy.hpp>
 
+// Stdexec include(s).
+#include <exec/inline_scheduler.hpp>
+#include <stdexec/execution.hpp>
+
 // GTest include(s).
 #include <gtest/gtest.h>
 
@@ -94,8 +98,11 @@ TEST(CUDASpacepointFormation, cuda) {
     // Run spacepoint formation
     traccc::cuda::silicon_pixel_spacepoint_formation_algorithm sp_formation(
         mr, copy, stream);
-    auto spacepoints_buffer =
-        sp_formation(device_det, vecmem::get_data(measurements));
+    auto result = stdexec::sync_wait(stdexec::starts_on(
+        stdexec::inline_scheduler{},
+        sp_formation(device_det, vecmem::get_data(measurements))));
+    ASSERT_TRUE(result.has_value());
+    auto spacepoints_buffer = std::move(std::get<0>(result.value()));
 
     edm::spacepoint_collection::device spacepoints(spacepoints_buffer);
 
