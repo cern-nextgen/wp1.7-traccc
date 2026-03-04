@@ -10,7 +10,6 @@
 // Local include(s).
 #include "await_strategy.hpp"
 #include "make_magnetic_field.hpp"
-#include "task_arena_executor.hpp"
 
 // Project include(s)
 #include "traccc/execution/task.hpp"
@@ -218,14 +217,8 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         throw std::invalid_argument("Unknown reconstruction stage");
     }
 
-    // Set up the TBB arena and thread group. From here on out TBB is only
-    // allowed to use the specified number of threads.
-    tbb::global_control global_thread_limit(
-        tbb::global_control::max_allowed_parallelism,
-        threading_opts.threads + 1);
-    tbb::task_arena arena{static_cast<int>(threading_opts.threads), 0};
-    auto context = task_arena_executor::task_arena_context{arena};
-    auto executor = task_arena_executor{context};
+    // Set up the thread pool.
+    boost::capy::thread_pool thread_pool{threading_opts.threads};
 
     // Seed the random number generator.
     if (throughput_opts.random_seed == 0u) {
@@ -289,7 +282,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                 queue_.push(slot_);
             };
             // Launch the processing of the event.
-            boost::capy::run_async(executor, handler)(
+            boost::capy::run_async(thread_pool.get_executor(), handler)(
                 payload(algs, input, progress_bar, rec_track_params,
                         concurrent_slots, event, slot, process_event));
         }
@@ -354,7 +347,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                 queue_.push(slot_);
             };
             // Launch the processing of the event.
-            boost::capy::run_async(executor, handler)(
+            boost::capy::run_async(thread_pool.get_executor(), handler)(
                 payload(algs, input, progress_bar, rec_track_params,
                         concurrent_slots, event, slot, process_event));
         }
