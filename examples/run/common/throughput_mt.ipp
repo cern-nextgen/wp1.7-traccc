@@ -10,7 +10,6 @@
 // Local include(s).
 #include "await_strategy.hpp"
 #include "make_magnetic_field.hpp"
-#include "task_arena_scheduler.hpp"
 
 // Project include(s)
 #include "traccc/execution/task.hpp"
@@ -56,12 +55,14 @@
 
 // Stdexec include(s).
 #include <exec/async_scope.hpp>
+#include <exec/static_thread_pool.hpp>
 
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
 
 // System include(s).
 #include <atomic>
+#include <cstdint>
 #include <cstdlib>
 #include <ctime>
 #include <fstream>
@@ -216,13 +217,10 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         throw std::invalid_argument("Unknown reconstruction stage");
     }
 
-    // Set up the TBB arena and thread group. From here on out TBB is only
-    // allowed to use the specified number of threads.
-    tbb::global_control global_thread_limit(
-        tbb::global_control::max_allowed_parallelism,
-        threading_opts.threads + 1);
-    tbb::task_arena arena{static_cast<int>(threading_opts.threads), 0};
-    auto scheduler = task_arena_scheduler{arena};
+    // Set up the execution context.
+    auto thread_pool = exec::static_thread_pool(
+        static_cast<std::uint32_t>(threading_opts.threads));
+    auto scheduler = thread_pool.get_scheduler();
     auto scope = exec::async_scope{};
 
     // Seed the random number generator.
