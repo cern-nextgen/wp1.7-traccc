@@ -65,6 +65,10 @@ traccc_add_library( traccc_core core TYPE SHARED
   "include/traccc/utils/logging.hpp"
   "include/traccc/utils/prob.hpp"
   "src/utils/logging.cpp"
+  # Execution.
+  "include/traccc/execution/task.hpp"
+  "include/traccc/execution/counting_scope.hpp"
+  "include/traccc/execution/sync_wait.hpp"
   # Clusterization algorithmic code.
   "include/traccc/clusterization/details/sparse_ccl.hpp"
   "include/traccc/clusterization/impl/sparse_ccl.ipp"

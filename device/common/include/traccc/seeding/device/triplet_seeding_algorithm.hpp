@@ -14,12 +14,14 @@
 #include "traccc/edm/device/device_triplet.hpp"
 #include "traccc/edm/device/doublet_counter.hpp"
 #include "traccc/edm/device/triplet_counter.hpp"
+#include "traccc/execution/task.hpp"
 
 // Project include(s).
 #include "traccc/edm/seed_collection.hpp"
 #include "traccc/edm/spacepoint_collection.hpp"
 #include "traccc/seeding/detail/seeding_config.hpp"
 #include "traccc/seeding/detail/spacepoint_grid.hpp"
+#include "traccc/seeding/device/triplet_seeding_kernel_payloads.hpp"
 #include "traccc/utils/algorithm.hpp"
 #include "traccc/utils/memory_resource.hpp"
 #include "traccc/utils/messaging.hpp"
@@ -35,7 +37,7 @@ namespace traccc::device {
 /// synchronisation statement is required before destroying this buffer.
 ///
 class triplet_seeding_algorithm
-    : public algorithm<edm::seed_collection::buffer(
+    : public algorithm<task<edm::seed_collection::buffer>(
           const edm::spacepoint_collection::const_view&)>,
       public messaging,
       public algorithm_base {
@@ -63,7 +65,8 @@ class triplet_seeding_algorithm
     /// Operator executing the algorithm.
     ///
     /// @param spacepoints is a view of all spacepoints in the event
-    /// @return the buffer of track seeds reconstructed from the spacepoints
+    /// @return A task returning the buffer of track seeds reconstructed from
+    /// the spacepoints
     ///
     output_type operator()(const edm::spacepoint_collection::const_view&
                                spacepoints) const override;
@@ -73,22 +76,8 @@ class triplet_seeding_algorithm
     /// @{
 
     /// Payload for the @c count_grid_capacities_kernel function
-    struct count_grid_capacities_kernel_payload {
-        /// The number of spacepoints in the event
-        edm::spacepoint_collection::const_view::size_type n_spacepoints;
-        /// The seed finding configuration
-        const seedfinder_config& config;
-        /// The phi axis of the spacepoint grid
-        const traccc::details::spacepoint_grid_types::host::axis_p0_type&
-            phi_axis;
-        /// The z axis of the spacepoint grid
-        const traccc::details::spacepoint_grid_types::host::axis_p1_type&
-            z_axis;
-        /// All spacepoints in the event
-        const edm::spacepoint_collection::const_view& spacepoints;
-        /// The buffer to write the grid capacities into
-        vecmem::data::vector_view<unsigned int>& grid_capacities;
-    };
+    using count_grid_capacities_kernel_payload =
+        triplet_seeding_count_grid_capacities_kernel_payload;
 
     /// Spacepoint grid capacity counting kernel launcher
     ///
@@ -98,18 +87,8 @@ class triplet_seeding_algorithm
         const count_grid_capacities_kernel_payload& payload) const = 0;
 
     /// Payload for the @c populate_grid_kernel function
-    struct populate_grid_kernel_payload {
-        /// The number of spacepoints in the event
-        edm::spacepoint_collection::const_view::size_type n_spacepoints;
-        /// The seed finding configuration
-        const seedfinder_config& config;
-        /// All spacepoints in the event
-        const edm::spacepoint_collection::const_view& spacepoints;
-        /// The spacepoint grid to populate
-        traccc::details::spacepoint_grid_types::view& grid;
-        /// A prefix sum describing the grid contents
-        vecmem::data::vector_view<prefix_sum_element_t>& grid_prefix_sum;
-    };
+    using populate_grid_kernel_payload =
+        triplet_seeding_populate_grid_kernel_payload;
 
     /// Spacepoint grid population kernel launcher
     ///
@@ -119,25 +98,8 @@ class triplet_seeding_algorithm
         const populate_grid_kernel_payload& payload) const = 0;
 
     /// Payload for the @c count_doublets_kernel function
-    struct count_doublets_kernel_payload {
-        /// The number of spacepoints in the event
-        edm::spacepoint_collection::const_view::size_type n_spacepoints;
-        /// The seed finding configuration
-        const seedfinder_config& config;
-        /// All spacepoints in the event
-        const edm::spacepoint_collection::const_view& spacepoints;
-        /// The populated spacepoint grid
-        const traccc::details::spacepoint_grid_types::const_view& grid;
-        /// A prefix sum describing the grid contents
-        const vecmem::data::vector_view<const prefix_sum_element_t>&
-            grid_prefix_sum;
-        /// The doublet counter collection to fill
-        doublet_counter_collection_types::view& doublet_counter;
-        /// The number of middle-bottom doublets found
-        unsigned int& nMidBot;
-        /// The number of middle-top doublets found
-        unsigned int& nMidTop;
-    };
+    using count_doublets_kernel_payload =
+        triplet_seeding_count_doublets_kernel_payload;
 
     /// Doublet counting kernel launcher
     ///
@@ -147,23 +109,8 @@ class triplet_seeding_algorithm
         const count_doublets_kernel_payload& payload) const = 0;
 
     /// Payload for the @c find_doublets_kernel function
-    struct find_doublets_kernel_payload {
-        /// The number of doublets counted earlier
-        device::doublet_counter_collection_types::const_view::size_type
-            n_doublets;
-        /// The seed finding configuration
-        const seedfinder_config& config;
-        /// All spacepoints in the event
-        const edm::spacepoint_collection::const_view& spacepoints;
-        /// The populated spacepoint grid
-        const traccc::details::spacepoint_grid_types::const_view& grid;
-        /// The doublet counter collection
-        const doublet_counter_collection_types::const_view& doublet_counter;
-        /// The middle-bottom doublet collection to fill
-        device_doublet_collection_types::view& mb_doublets;
-        /// The middle-top doublet collection to fill
-        device_doublet_collection_types::view& mt_doublets;
-    };
+    using find_doublets_kernel_payload =
+        triplet_seeding_find_doublets_kernel_payload;
 
     /// Doublet finding kernel launcher
     ///
@@ -173,26 +120,8 @@ class triplet_seeding_algorithm
         const find_doublets_kernel_payload& payload) const = 0;
 
     /// Payload for the @c count_triplets_kernel function
-    struct count_triplets_kernel_payload {
-        /// The number of middle-bottom doublets found earlier
-        unsigned int nMidBot;
-        /// The seed finding configuration
-        const seedfinder_config& config;
-        /// All spacepoints in the event
-        const edm::spacepoint_collection::const_view& spacepoints;
-        /// The populated spacepoint grid
-        const traccc::details::spacepoint_grid_types::const_view& grid;
-        /// The doublet counter collection
-        const doublet_counter_collection_types::const_view& doublet_counter;
-        /// The middle-bottom doublet collection
-        const device_doublet_collection_types::const_view& mb_doublets;
-        /// The middle-top doublet collection
-        const device_doublet_collection_types::const_view& mt_doublets;
-        /// The triplet counter per middle spacepoint to fill
-        triplet_counter_spM_collection_types::view& spM_counter;
-        /// The triplet counter per middle-bottom doublet to fill
-        triplet_counter_collection_types::view& midBot_counter;
-    };
+    using count_triplets_kernel_payload =
+        triplet_seeding_count_triplets_kernel_payload;
 
     /// Triplet counting kernel launcher
     ///
@@ -202,17 +131,8 @@ class triplet_seeding_algorithm
         const count_triplets_kernel_payload& payload) const = 0;
 
     /// Payload for the @c triplet_counts_reduction_kernel function
-    struct triplet_counts_reduction_kernel_payload {
-        /// The number of doublets found earlier
-        device::doublet_counter_collection_types::const_view::size_type
-            n_doublets;
-        /// The doublet counter collection
-        const doublet_counter_collection_types::const_view& doublet_counter;
-        /// The triplet counter per middle spacepoint
-        triplet_counter_spM_collection_types::view& spM_counter;
-        /// The total number of triplets found
-        unsigned int& nTriplets;
-    };
+    using triplet_counts_reduction_kernel_payload =
+        triplet_seeding_triplet_counts_reduction_kernel_payload;
 
     /// Triplet count reduction kernel launcher
     ///
@@ -222,28 +142,8 @@ class triplet_seeding_algorithm
         const triplet_counts_reduction_kernel_payload& payload) const = 0;
 
     /// Payload for the @c find_triplets_kernel function
-    struct find_triplets_kernel_payload {
-        /// The number of middle-bottom doublets found earlier
-        unsigned int nMidBot;
-        /// The seed finding configuration
-        const seedfinder_config& finding_config;
-        /// The seed filtering configuration
-        const seedfilter_config& filter_config;
-        /// All spacepoints in the event
-        const edm::spacepoint_collection::const_view& spacepoints;
-        /// The populated spacepoint grid
-        const traccc::details::spacepoint_grid_types::const_view& grid;
-        /// The doublet counter collection
-        const doublet_counter_collection_types::const_view& doublet_counter;
-        /// The middle-top doublet collection
-        const device_doublet_collection_types::const_view& mt_doublets;
-        /// The triplet counter per middle spacepoint
-        const triplet_counter_spM_collection_types::const_view& spM_tc;
-        /// The triplet counter per middle-bottom doublet
-        const triplet_counter_collection_types::const_view& midBot_tc;
-        /// The triplet collection to fill
-        device_triplet_collection_types::view& triplets;
-    };
+    using find_triplets_kernel_payload =
+        triplet_seeding_find_triplets_kernel_payload;
 
     /// Triplet finding kernel launcher
     ///
@@ -253,20 +153,8 @@ class triplet_seeding_algorithm
         const find_triplets_kernel_payload& payload) const = 0;
 
     /// Payload for the @c update_triplet_weights_kernel function
-    struct update_triplet_weights_kernel_payload {
-        /// The number of triplets found earlier
-        device_triplet_collection_types::const_view::size_type n_triplets;
-        /// The seed filtering configuration
-        const seedfilter_config& config;
-        /// All spacepoints in the event
-        const edm::spacepoint_collection::const_view& spacepoints;
-        /// The triplet counter per middle spacepoint
-        const triplet_counter_spM_collection_types::const_view& spM_tc;
-        /// The triplet counter per middle-bottom doublet
-        const triplet_counter_collection_types::const_view& midBot_tc;
-        /// The triplet collection to update
-        device_triplet_collection_types::view& triplets;
-    };
+    using update_triplet_weights_kernel_payload =
+        triplet_seeding_update_triplet_weights_kernel_payload;
 
     /// Triplet weight updater/filler kernel launcher
     ///
@@ -276,27 +164,8 @@ class triplet_seeding_algorithm
         const update_triplet_weights_kernel_payload& payload) const = 0;
 
     /// Payload for the @c select_seeds_kernel function
-    struct select_seeds_kernel_payload {
-        /// The number of doublets found earlier
-        device::doublet_counter_collection_types::const_view::size_type
-            n_doublets;
-        /// The seed finding configuration
-        const seedfinder_config& finder_config;
-        /// The seed filtering configuration
-        const seedfilter_config& filter_config;
-        /// All spacepoints in the event
-        const edm::spacepoint_collection::const_view& spacepoints;
-        /// The populated spacepoint grid
-        const traccc::details::spacepoint_grid_types::const_view& grid;
-        /// The triplet counter per middle spacepoint
-        const triplet_counter_spM_collection_types::const_view& spM_tc;
-        /// The triplet counter per middle-bottom doublet
-        const triplet_counter_collection_types::const_view& midBot_tc;
-        /// The triplet collection
-        const device_triplet_collection_types::const_view& triplets;
-        /// The seed collection to fill
-        edm::seed_collection::view& seeds;
-    };
+    using select_seeds_kernel_payload =
+        triplet_seeding_select_seeds_kernel_payload;
 
     /// Seed selection/filling kernel launcher
     ///
@@ -308,7 +177,7 @@ class triplet_seeding_algorithm
     /// @}
 
     /// Possibly suspend execution until all asynchronous operations are done
-    virtual void await() const = 0;
+    virtual task<void> await() const = 0;
 
     private:
     /// Internal data type
