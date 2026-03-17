@@ -12,6 +12,7 @@
 
 // Project include(s).
 #include "traccc/seeding/device/seed_parameter_estimation_algorithm.hpp"
+#include "traccc/seeding/device/seed_parameter_estimation_kernel_payload.hpp"
 
 namespace traccc::cuda {
 
@@ -48,12 +49,11 @@ struct seed_parameter_estimation_algorithm
     /// @param payload The payload for the kernel
     ///
     void estimate_seed_params_kernel(
-        const struct estimate_seed_params_kernel_payload& payload)
-        const override;
+        const estimate_seed_params_kernel_payload& payload) const override;
 
     /// @}
 
-    void await() const override;
+    task<void> await() const override;
 
     private:
     await_function_t m_await_function;

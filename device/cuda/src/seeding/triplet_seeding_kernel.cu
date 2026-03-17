@@ -9,7 +9,7 @@
 #include "../utils/cuda_error_handling.hpp"
 #include "../utils/global_index.hpp"
 #include "../utils/utils.hpp"
-#include "traccc/cuda/seeding/triplet_seeding_algorithm.hpp"
+#include "triplet_seeding_kernel.hpp"
 
 // Project include(s).
 #include "traccc/seeding/detail/spacepoint_grid.hpp"
@@ -161,143 +161,126 @@ __global__ void select_seeds(
 
 }  // namespace kernels
 
-triplet_seeding_algorithm::triplet_seeding_algorithm(
-    const seedfinder_config& finder_config,
-    const spacepoint_grid_config& grid_config,
-    const seedfilter_config& filter_config, const traccc::memory_resource& mr,
-    vecmem::copy& copy, cuda::stream& str, std::unique_ptr<const Logger> logger,
-    await_function_t await_func)
-    : device::triplet_seeding_algorithm(finder_config, grid_config,
-                                        filter_config, mr, copy,
-                                        std::move(logger)),
-      cuda::algorithm_base{str},
-      m_await_function(await_func) {}
+void launch_count_grid_capacities_kernel(
+    const traccc::device::triplet_seeding_count_grid_capacities_kernel_payload&
+        payload,
+    cudaStream_t stream, unsigned int warp_size) {
 
-void triplet_seeding_algorithm::count_grid_capacities_kernel(
-    const count_grid_capacities_kernel_payload& payload) const {
-
-    const unsigned int n_threads = warp_size() * 8;
+    const unsigned int n_threads = warp_size * 8;
     const unsigned int n_blocks =
         (payload.n_spacepoints + n_threads - 1) / n_threads;
-    kernels::count_grid_capacities<<<n_blocks, n_threads, 0,
-                                     details::get_stream(stream())>>>(
+    kernels::count_grid_capacities<<<n_blocks, n_threads, 0, stream>>>(
         payload.config, payload.phi_axis, payload.z_axis, payload.spacepoints,
         payload.grid_capacities);
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void triplet_seeding_algorithm::populate_grid_kernel(
-    const populate_grid_kernel_payload& payload) const {
+void launch_populate_grid_kernel(
+    const traccc::device::triplet_seeding_populate_grid_kernel_payload& payload,
+    cudaStream_t stream, unsigned int warp_size) {
 
-    const unsigned int n_threads = warp_size() * 8;
+    const unsigned int n_threads = warp_size * 8;
     const unsigned int n_blocks =
         (payload.n_spacepoints + n_threads - 1) / n_threads;
-    kernels::populate_grid<<<n_blocks, n_threads, 0,
-                             details::get_stream(stream())>>>(
+    kernels::populate_grid<<<n_blocks, n_threads, 0, stream>>>(
         payload.config, payload.spacepoints, payload.grid,
         payload.grid_prefix_sum);
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void triplet_seeding_algorithm::count_doublets_kernel(
-    const count_doublets_kernel_payload& payload) const {
-
-    const unsigned int n_threads = warp_size() * 2;
+void launch_count_doublets_kernel(
+    const traccc::device::triplet_seeding_count_doublets_kernel_payload&
+        payload,
+    cudaStream_t stream, unsigned int warp_size) {
+    const unsigned int n_threads = warp_size * 2;
     const unsigned int n_blocks =
         (payload.n_spacepoints + n_threads - 1) / n_threads;
-    kernels::count_doublets<<<n_blocks, n_threads, 0,
-                              details::get_stream(stream())>>>(
+    kernels::count_doublets<<<n_blocks, n_threads, 0, stream>>>(
         payload.config, payload.spacepoints, payload.grid,
         payload.grid_prefix_sum, payload.doublet_counter, payload.nMidBot,
         payload.nMidTop);
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void triplet_seeding_algorithm::find_doublets_kernel(
-    const find_doublets_kernel_payload& payload) const {
-
-    const unsigned int n_threads = warp_size() * 2;
+void launch_find_doublets_kernel(
+    const traccc::device::triplet_seeding_find_doublets_kernel_payload& payload,
+    cudaStream_t stream, unsigned int warp_size) {
+    const unsigned int n_threads = warp_size * 2;
     const unsigned int n_blocks =
         (payload.n_doublets + n_threads - 1) / n_threads;
-    kernels::find_doublets<<<n_blocks, n_threads, 0,
-                             details::get_stream(stream())>>>(
+    kernels::find_doublets<<<n_blocks, n_threads, 0, stream>>>(
         payload.config, payload.spacepoints, payload.grid,
         payload.doublet_counter, payload.mb_doublets, payload.mt_doublets);
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void triplet_seeding_algorithm::count_triplets_kernel(
-    const count_triplets_kernel_payload& payload) const {
-
-    const unsigned int n_threads = warp_size() * 2;
+void launch_count_triplets_kernel(
+    const traccc::device::triplet_seeding_count_triplets_kernel_payload&
+        payload,
+    cudaStream_t stream, unsigned int warp_size) {
+    const unsigned int n_threads = warp_size * 2;
     const unsigned int n_blocks = (payload.nMidBot + n_threads - 1) / n_threads;
-    kernels::count_triplets<<<n_blocks, n_threads, 0,
-                              details::get_stream(stream())>>>(
+    kernels::count_triplets<<<n_blocks, n_threads, 0, stream>>>(
         payload.config, payload.spacepoints, payload.grid,
         payload.doublet_counter, payload.mb_doublets, payload.mt_doublets,
         payload.spM_counter, payload.midBot_counter);
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void triplet_seeding_algorithm::triplet_counts_reduction_kernel(
-    const triplet_counts_reduction_kernel_payload& payload) const {
-
-    const unsigned int n_threads = warp_size() * 2;
+void launch_triplet_counts_reduction_kernel(
+    const traccc::device::
+        triplet_seeding_triplet_counts_reduction_kernel_payload& payload,
+    cudaStream_t stream, unsigned int warp_size) {
+    const unsigned int n_threads = warp_size * 2;
     const unsigned int n_blocks =
         (payload.n_doublets + n_threads - 1) / n_threads;
-    kernels::reduce_triplet_counts<<<n_blocks, n_threads, 0,
-                                     details::get_stream(stream())>>>(
+    kernels::reduce_triplet_counts<<<n_blocks, n_threads, 0, stream>>>(
         payload.doublet_counter, payload.spM_counter, payload.nTriplets);
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void triplet_seeding_algorithm::find_triplets_kernel(
-    const find_triplets_kernel_payload& payload) const {
-
-    const unsigned int n_threads = warp_size() * 2;
+void launch_find_triplets_kernel(
+    const traccc::device::triplet_seeding_find_triplets_kernel_payload& payload,
+    cudaStream_t stream, unsigned int warp_size) {
+    const unsigned int n_threads = warp_size * 2;
     const unsigned int n_blocks = (payload.nMidBot + n_threads - 1) / n_threads;
-    kernels::find_triplets<<<n_blocks, n_threads, 0,
-                             details::get_stream(stream())>>>(
+    kernels::find_triplets<<<n_blocks, n_threads, 0, stream>>>(
         payload.finding_config, payload.filter_config, payload.spacepoints,
         payload.grid, payload.doublet_counter, payload.mt_doublets,
         payload.spM_tc, payload.midBot_tc, payload.triplets);
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void triplet_seeding_algorithm::update_triplet_weights_kernel(
-    const update_triplet_weights_kernel_payload& payload) const {
-
-    const unsigned int n_threads = warp_size() * 2;
+void launch_update_triplet_weights_kernel(
+    const traccc::device::triplet_seeding_update_triplet_weights_kernel_payload&
+        payload,
+    cudaStream_t stream, unsigned int warp_size) {
+    const unsigned int n_threads = warp_size * 2;
     const unsigned int n_blocks =
         (payload.n_triplets + n_threads - 1) / n_threads;
     kernels::update_triplet_weights<<<
         n_blocks, n_threads,
-        sizeof(scalar) * payload.config.compatSeedLimit * n_threads,
-        details::get_stream(stream())>>>(payload.config, payload.spacepoints,
-                                         payload.spM_tc, payload.midBot_tc,
-                                         payload.triplets);
+        sizeof(scalar) * payload.config.compatSeedLimit * n_threads, stream>>>(
+        payload.config, payload.spacepoints, payload.spM_tc, payload.midBot_tc,
+        payload.triplets);
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void triplet_seeding_algorithm::select_seeds_kernel(
-    const select_seeds_kernel_payload& payload) const {
-
-    const unsigned int n_threads = warp_size() * 2;
+void launch_select_seeds_kernel(
+    const traccc::device::triplet_seeding_select_seeds_kernel_payload& payload,
+    cudaStream_t stream, unsigned int warp_size) {
+    const unsigned int n_threads = warp_size * 2;
     const unsigned int n_blocks =
         (payload.n_doublets + n_threads - 1) / n_threads;
     kernels::
         select_seeds<<<n_blocks, n_threads,
                        sizeof(device::device_triplet) *
                            payload.finder_config.maxSeedsPerSpM * n_threads,
-                       details::get_stream(stream())>>>(
-            payload.finder_config, payload.filter_config, payload.spacepoints,
-            payload.grid, payload.spM_tc, payload.midBot_tc, payload.triplets,
-            payload.seeds);
+                       stream>>>(payload.finder_config, payload.filter_config,
+                                 payload.spacepoints, payload.grid,
+                                 payload.spM_tc, payload.midBot_tc,
+                                 payload.triplets, payload.seeds);
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
-}
-
-void triplet_seeding_algorithm::await() const {
-    m_await_function(stream());
 }
 
 }  // namespace traccc::cuda

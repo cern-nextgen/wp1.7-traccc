@@ -421,6 +421,25 @@ if( TRACCC_SETUP_INDICATORS )
    endif()
 endif()
 
+# Set up stdexec.
+option( TRACCC_SETUP_STDEXEC
+   "Set up the stdexec target(s) explicitly" TRUE )
+if (TRACCC_USE_SYSTEM_LIBS OR TRACCC_USE_SPACK_LIBS)
+   set(TRACCC_USE_SYSTEM_STDEXEC_DEFAULT ON)
+else()
+   set(TRACCC_USE_SYSTEM_STDEXEC_DEFAULT OFF)
+endif()
+option( TRACCC_USE_SYSTEM_STDEXEC
+   "Pick up an existing installation of stdexec from the build environment"
+   ${TRACCC_USE_SYSTEM_STDEXEC_DEFAULT} )
+unset(TRACCC_USE_SYSTEM_STDEXEC_DEFAULT)
+if( TRACCC_SETUP_STDEXEC )
+   if( TRACCC_USE_SYSTEM_STDEXEC )
+      find_package( stdexec REQUIRED )
+   else()
+      add_subdirectory( extern/stdexec )
+   endif()
+endif()
 
 option( TRACCC_ENABLE_NVTX_PROFILING
         "Use instrument functions to enable fine grained profiling" FALSE )
