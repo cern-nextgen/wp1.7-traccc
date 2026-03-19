@@ -11,6 +11,7 @@
 #include "make_magnetic_field.hpp"
 
 // Project include(s)
+#include "traccc/execution/task.hpp"
 #include "traccc/geometry/detector.hpp"
 #include "traccc/geometry/host_detector.hpp"
 #include "traccc/seeding/detail/track_params_estimation_config.hpp"
@@ -45,12 +46,17 @@
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
 
+// Boost.Capy include(s).
+#include <boost/capy.hpp>
+
 // System include(s).
+#include <condition_variable>
 #include <cstdlib>
 #include <ctime>
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <mutex>
 
 namespace traccc {
 
@@ -155,17 +161,29 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
     }
 
     // Set up a lambda that calls the correct function on the algorithm.
-    std::function<std::size_t(const edm::silicon_cell_collection::host&)>
+    std::function<task<std::size_t>(FULL_CHAIN_ALG*,
+                                    const edm::silicon_cell_collection::host&)>
         process_event;
     if (throughput_opts.reco_stage == opts::throughput::stage::seeding) {
-        process_event = [&](const edm::silicon_cell_collection::host& cells)
-            -> std::size_t { return alg->seeding(cells).size(); };
+        process_event = [](FULL_CHAIN_ALG* alg_,
+                           const edm::silicon_cell_collection::host& cells_)
+            -> task<std::size_t> {
+            auto result = co_await alg_->seeding(cells_);
+            co_return result.size();
+        };
     } else if (throughput_opts.reco_stage == opts::throughput::stage::full) {
-        process_event = [&](const edm::silicon_cell_collection::host& cells)
-            -> std::size_t { return (*alg)(cells).size(); };
+        process_event = [](FULL_CHAIN_ALG* alg_,
+                           const edm::silicon_cell_collection::host& cells_)
+            -> task<std::size_t> {
+            auto result = co_await (*alg_)(cells_);
+            co_return result.size();
+        };
     } else {
         throw std::invalid_argument("Unknown reconstruction stage");
     }
+
+    // Set up an execution context.
+    boost::capy::thread_pool thread(1);
 
     // Dummy count uses output of tp algorithm to ensure the compiler
     // optimisations don't skip any step
@@ -188,6 +206,21 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
         // Process the requested number of events.
         for (std::size_t i = 0; i < throughput_opts.cold_run_events; ++i) {
 
+            // Set up a completion handler for the executor.
+            std::mutex mutex;
+            std::condition_variable cond_variable;
+            bool done = false;
+            std::size_t result = 0;
+
+            auto handler = [&mutex, &cond_variable, &done,
+                            &result](std::size_t res) {
+                {
+                    std::lock_guard lock(mutex);
+                    result = res;
+                    done = true;
+                }
+                cond_variable.notify_one();
+            };
             // Choose which event to process.
             const std::size_t event =
                 (throughput_opts.deterministic_event_order
@@ -196,7 +229,13 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            rec_track_params += process_event(input[event]);
+            boost::capy::run_async(thread.get_executor(), handler)(
+                process_event(alg.get(), input[event]));
+            {
+                std::unique_lock lock(mutex);
+                cond_variable.wait(lock, [&done] { return done; });
+            }
+            rec_track_params += result;
             progress_bar.tick();
         }
     }
@@ -219,6 +258,21 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
         // Process the requested number of events.
         for (std::size_t i = 0; i < throughput_opts.processed_events; ++i) {
 
+            // Set up a completion handler for the executor.
+            std::mutex mutex;
+            std::condition_variable cond_variable;
+            bool done = false;
+            std::size_t result = 0;
+
+            auto handler = [&mutex, &cond_variable, &done,
+                            &result](std::size_t res) {
+                {
+                    std::lock_guard lock(mutex);
+                    result = res;
+                    done = true;
+                }
+                cond_variable.notify_one();
+            };
             // Choose which event to process.
             const std::size_t event =
                 (throughput_opts.deterministic_event_order
@@ -227,7 +281,13 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            rec_track_params += process_event(input[event]);
+            boost::capy::run_async(thread.get_executor(), handler)(
+                process_event(alg.get(), input[event]));
+            {
+                std::unique_lock lock(mutex);
+                cond_variable.wait(lock, [&done] { return done; });
+            }
+            rec_track_params += result;
             progress_bar.tick();
         }
     }
