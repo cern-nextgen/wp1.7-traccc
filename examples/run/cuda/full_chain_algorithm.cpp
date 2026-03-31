@@ -9,11 +9,15 @@
 #include "full_chain_algorithm.hpp"
 
 #include "../common/await_strategy.hpp"
+#include "../common/event_sync_strategy.hpp"
 
 // Project include(s).
 #include "traccc/cuda/utils/algorithm_base.hpp"
 #include "traccc/cuda/utils/make_magnetic_field.hpp"
 #include "traccc/seeding/detail/track_params_estimation_config.hpp"
+
+// Vecmem include(s).
+#include <vecmem/utils/cuda/async_copy.hpp>
 
 // CUDA include(s).
 #include <cuda_runtime_api.h>
@@ -60,7 +64,7 @@ full_chain_algorithm::full_chain_algorithm(
     const silicon_detector_description::host& det_descr,
     const magnetic_field& field, host_detector* detector,
     std::unique_ptr<const traccc::Logger> logger,
-    await_strategy_helper await_func_helper)
+    event_sync_strategy event_sync, await_strategy_helper await_func_helper)
     : messaging(logger->clone()),
       m_await_function(await_func_helper.get_await_function()),
       m_host_mr(host_mr),
@@ -69,7 +73,10 @@ full_chain_algorithm::full_chain_algorithm(
       m_stream(),
       m_device_mr(),
       m_cached_device_mr(m_device_mr),
-      m_copy(m_stream.cudaStream()),
+      m_event_wait(event_sync == event_sync_strategy::block
+                       ? vecmem::cuda::event_wait_mode::blocking
+                       : vecmem::cuda::event_wait_mode::spinning),
+      m_copy(m_stream.cudaStream(), m_event_wait),
       m_field_vec{0.f, 0.f, finder_config.bFieldInZ},
       m_field(make_magnetic_field(field)),
       m_det_descr(det_descr),
@@ -134,7 +141,8 @@ full_chain_algorithm::full_chain_algorithm(const full_chain_algorithm& parent)
       m_stream(),
       m_device_mr(),
       m_cached_device_mr(m_device_mr),
-      m_copy(m_stream.cudaStream()),
+      m_event_wait(parent.m_event_wait),
+      m_copy(m_stream.cudaStream(), m_event_wait),
       m_field_vec(parent.m_field_vec),
       m_field(parent.m_field),
       m_det_descr(parent.m_det_descr),
