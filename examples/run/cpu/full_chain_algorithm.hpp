@@ -9,6 +9,7 @@
 
 // Local include(s).
 #include "../common/await_strategy.hpp"
+#include "../common/event_sync_strategy.hpp"
 
 // Project include(s).
 #include "traccc/bfield/magnetic_field.hpp"
@@ -83,6 +84,7 @@ class full_chain_algorithm
         const silicon_detector_description::host& det_descr,
         const magnetic_field& field, const host_detector* detector,
         std::unique_ptr<const traccc::Logger> logger,
+        event_sync_strategy event_sync = event_sync_strategy::spin,
         await_strategy = await_strategy::sync);
 
     /// Reconstruct track parameters in the entire detector

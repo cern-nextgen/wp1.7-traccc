@@ -9,6 +9,7 @@
 
 // Project includes(s).
 #include "../common/await_strategy.hpp"
+#include "../common/event_sync_strategy.hpp"
 
 // Project include(s).
 #include "traccc/clusterization/clustering_config.hpp"
@@ -96,6 +97,7 @@ class full_chain_algorithm
         const silicon_detector_description::host& det_descr,
         const magnetic_field& field, host_detector* detector,
         std::unique_ptr<const traccc::Logger> logger,
+        event_sync_strategy event_sync = event_sync_strategy::spin,
         await_strategy_helper await_func_helper = await_strategy_helper());
 
     /// Copy constructor
@@ -143,6 +145,8 @@ class full_chain_algorithm
     vecmem::cuda::device_memory_resource m_device_mr;
     /// Device caching memory resource
     mutable vecmem::binary_page_memory_resource m_cached_device_mr;
+    /// Event synchronization strategy
+    vecmem::cuda::event_wait_mode m_event_wait;
     /// (Asynchronous) Memory copy object
     mutable vecmem::cuda::async_copy m_copy;
 

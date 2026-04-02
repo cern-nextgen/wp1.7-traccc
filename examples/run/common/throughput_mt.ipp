@@ -9,6 +9,7 @@
 
 // Local include(s).
 #include "await_strategy.hpp"
+#include "event_sync_strategy.hpp"
 #include "make_magnetic_field.hpp"
 
 // Project include(s)
@@ -19,6 +20,7 @@
 // Command line option include(s).
 #include "traccc/options/clusterization.hpp"
 #include "traccc/options/detector.hpp"
+#include "traccc/options/device.hpp"
 #include "traccc/options/input_data.hpp"
 #include "traccc/options/logging.hpp"
 #include "traccc/options/magnetic_field.hpp"
@@ -86,11 +88,12 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     opts::throughput throughput_opts;
     opts::threading threading_opts;
     opts::logging logging_opts;
+    opts::device device_opts;
     opts::program_options program_opts{
         description,
         {detector_opts, bfield_opts, input_opts, clusterization_opts,
          seeding_opts, finding_opts, propagation_opts, fitting_opts,
-         throughput_opts, threading_opts, logging_opts},
+         throughput_opts, threading_opts, logging_opts, device_opts},
         argc,
         argv,
         prelogger->cloneWithSuffix("Options")};
@@ -176,6 +179,12 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         await_mode = await_strategy::sync;  // Placeholder for suspension modes
     }
 
+    // Determine the event synchronization strategy to use.
+    traccc::event_sync_strategy event_sync_mode =
+        device_opts.event_sync_mode == opts::device::event_sync_strategy::spin
+            ? traccc::event_sync_strategy::spin
+            : traccc::event_sync_strategy::block;
+
     // Set up the full-chain algorithm(s). One for each concurrent slot
     std::vector<FULL_CHAIN_ALG> algs;
     algs.reserve(threading_opts.concurrent_slots + 1);
@@ -184,7 +193,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                         spacepoint_grid_config, seedfilter_config,
                         track_params_estimation_config, finding_cfg,
                         fitting_cfg, det_descr, field, &detector,
-                        logger().clone(), await_mode});
+                        logger().clone(), event_sync_mode, await_mode});
     }
 
     // Set up a lambda that calls the correct function on the algorithms.
