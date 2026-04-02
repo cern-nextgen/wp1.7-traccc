@@ -32,7 +32,9 @@ traccc_add_executable( truth_fitting_example_cuda "truth_fitting_example_cuda.cp
 #
 add_library( traccc_examples_cuda STATIC
    "full_chain_algorithm.hpp"
-   "full_chain_algorithm.cpp" )
+   "full_chain_algorithm.cpp"
+   "device_config.hpp"
+   "device_config.cpp")
 target_link_libraries( traccc_examples_cuda
    PUBLIC CUDA::cudart vecmem::core vecmem::cuda detray::core detray::detectors
           traccc::core traccc::device_common traccc::cuda_utils traccc::cuda

@@ -15,6 +15,8 @@ namespace traccc {
 /// Helper function running a multi-threaded throughput test
 ///
 /// @tparam FULL_CHAIN_ALG The type of the full chain algorithm to use
+/// @tparam device_config The type of the device configuration to use, or void
+/// if no device configuration is needed
 ///
 /// @param description A short description of the application
 /// @param argc The count of command line arguments (from @c main(...))
@@ -22,7 +24,7 @@ namespace traccc {
 ///
 /// @return The value to be returned from @c main(...)
 ///
-template <typename FULL_CHAIN_ALG>
+template <typename FULL_CHAIN_ALG, typename device_config = void>
 int throughput_mt(std::string_view description, int argc, char* argv[]);
 
 }  // namespace traccc
