@@ -26,6 +26,15 @@ class device : public interface {
 
     event_sync_strategy event_sync_mode = event_sync_strategy::spin;
 
+    enum device_sync_strategy {
+        automatic,  ///< Use heuristic to choose between yield and spin
+        spin,       ///< Calling thread spins while waiting for the device
+        yield,      ///< Calling thread yields while waiting for the device
+        block       ///< Calling thread blocks while waiting for the device
+    };
+
+    device_sync_strategy device_sync_mode = device_sync_strategy::automatic;
+
     /// @}
 
     /// Constructor

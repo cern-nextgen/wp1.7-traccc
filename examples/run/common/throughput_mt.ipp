@@ -70,7 +70,7 @@
 
 namespace traccc {
 
-template <typename FULL_CHAIN_ALG>
+template <typename FULL_CHAIN_ALG, typename device_config>
 int throughput_mt(std::string_view description, int argc, char* argv[]) {
 
     std::unique_ptr<const traccc::Logger> prelogger = traccc::getDefaultLogger(
@@ -100,6 +100,12 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
 
     TRACCC_LOCAL_LOGGER(
         prelogger->clone(std::nullopt, traccc::Logging::Level(logging_opts)));
+
+    if constexpr (requires {
+                      device_config::apply(device_opts.device_sync_mode);
+                  }) {
+        device_config::apply(device_opts.device_sync_mode);
+    }
 
     // Set up the timing info holder.
     performance::timing_info times;

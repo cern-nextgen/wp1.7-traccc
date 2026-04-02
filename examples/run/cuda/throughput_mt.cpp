@@ -8,11 +8,13 @@
 // Local include(s).
 #include "../common/throughput_mt.hpp"
 
+#include "device_config.hpp"
 #include "full_chain_algorithm.hpp"
 
 int main(int argc, char* argv[]) {
 
     // Execute the throughput test.
-    return traccc::throughput_mt<traccc::cuda::full_chain_algorithm>(
+    return traccc::throughput_mt<traccc::cuda::full_chain_algorithm,
+                                 traccc::cuda::device_config>(
         "Multi-threaded CUDA GPU throughput tests", argc, argv);
 }
