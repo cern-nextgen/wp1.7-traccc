@@ -36,8 +36,11 @@ namespace traccc::cuda {
 
 await_strategy_helper::await_strategy_helper(await_strategy await_mode) {
     switch (await_mode) {
-        case await_strategy::sync:
-            m_await = default_await_function;
+        case await_strategy::sync_stream:
+            m_await = await_stream_sync;
+            break;
+        case await_strategy::sync_event:
+            m_await = await_event_sync;
             break;
         default:
             throw std::invalid_argument("Unknown await strategy");

@@ -83,7 +83,7 @@ class full_chain_algorithm
         const silicon_detector_description::host& det_descr,
         const magnetic_field& field, const host_detector* detector,
         std::unique_ptr<const traccc::Logger> logger,
-        await_strategy = await_strategy::sync);
+        await_strategy = await_strategy::sync_event);
 
     /// Reconstruct track parameters in the entire detector
     ///

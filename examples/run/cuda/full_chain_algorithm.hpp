@@ -47,7 +47,8 @@ namespace traccc::cuda {
 
 class await_strategy_helper {
     public:
-    await_strategy_helper(await_strategy await_mode = await_strategy::sync);
+    await_strategy_helper(
+        await_strategy await_mode = await_strategy::sync_event);
     await_function_t get_await_function() const noexcept;
 
     private:

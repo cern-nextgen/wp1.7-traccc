@@ -59,8 +59,9 @@ void silicon_pixel_spacepoint_formation_algorithm::form_spacepoints_kernel(
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void silicon_pixel_spacepoint_formation_algorithm::await() const {
-    m_await_function(stream());
+void silicon_pixel_spacepoint_formation_algorithm::await(
+    vecmem::abstract_event& event) const {
+    m_await_function(stream(), event);
 }
 
 }  // namespace traccc::cuda

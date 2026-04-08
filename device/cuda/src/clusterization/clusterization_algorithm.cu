@@ -70,8 +70,8 @@ void clusterization_algorithm::cluster_maker_kernel(
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void clusterization_algorithm::await() const {
-    m_await_function(stream());
+void clusterization_algorithm::await(vecmem::abstract_event& event) const {
+    m_await_function(stream(), event);
 }
 
 }  // namespace traccc::cuda

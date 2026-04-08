@@ -79,11 +79,11 @@ clusterization_algorithm::execute_impl(
     // Get the number of cells, in an asynchronous way if possible.
     edm::silicon_cell_collection::const_view::size_type num_cells = 0u;
     if (mr().host) {
-        const vecmem::async_size size = copy().get_size(cells, *(mr().host));
+        vecmem::async_size size = copy().get_size(cells, *(mr().host));
         // Here we could give control back to the caller, once our code allows
         // for it. (coroutines...)<-WIP
-        await();
-        num_cells = size.get();
+        await(size);
+        num_cells = size.unsafe_get();
     } else {
         num_cells = copy().get_size(cells);
     }
@@ -136,12 +136,12 @@ clusterization_algorithm::execute_impl(
         edm::measurement_collection<default_algebra>::buffer::size_type
             num_measurements = 0u;
         if (mr().host) {
-            const vecmem::async_size size =
+            vecmem::async_size size =
                 copy().get_size(measurements, *(mr().host));
             // Here we could give control back to the caller, once our code
             // allows for it. (coroutines...)<-WIP
-            await();
-            num_measurements = size.get();
+            await(size);
+            num_measurements = size.unsafe_get();
         } else {
             num_measurements = copy().get_size(measurements);
         }

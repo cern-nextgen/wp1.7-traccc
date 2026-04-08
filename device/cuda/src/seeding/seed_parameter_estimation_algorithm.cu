@@ -59,7 +59,8 @@ void seed_parameter_estimation_algorithm::estimate_seed_params_kernel(
     TRACCC_CUDA_ERROR_CHECK(cudaGetLastError());
 }
 
-void seed_parameter_estimation_algorithm::await() const {
-    m_await_function(stream());
+void seed_parameter_estimation_algorithm::await(
+    vecmem::abstract_event& event) const {
+    m_await_function(stream(), event);
 }
 }  // namespace traccc::cuda
