@@ -171,10 +171,20 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     }
 
     // Determine the await strategy to use.
-    await_strategy await_mode = await_strategy::sync;
-    if (threading_opts.await_mode == opts::threading::await_strategy::suspend) {
-        await_mode = await_strategy::sync;  // Placeholder for suspension modes
-    }
+    auto await_mode = [&]() {
+        switch (threading_opts.await_mode) {
+            case opts::threading::await_strategy::sync_event:
+                return await_strategy::sync_event;
+            case opts::threading::await_strategy::sync_stream:
+                return await_strategy::sync_stream;
+            case opts::threading::await_strategy::suspend_callback:
+            case opts::threading::await_strategy::suspend_poll:
+                throw std::invalid_argument(
+                    "Suspending await strategies are not supported");
+            default:
+                throw std::invalid_argument("Unknown await strategy");
+        }
+    }();
 
     // Set up the full-chain algorithm(s). One for each concurrent slot
     std::vector<FULL_CHAIN_ALG> algs;

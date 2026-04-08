@@ -120,8 +120,7 @@ combinatorial_kalman_filter(
     unsigned int n_measurements;
 
     if (mr.host) {
-        const vecmem::async_size size =
-            copy.get_size(measurements_view, *(mr.host));
+        vecmem::async_size size = copy.get_size(measurements_view, *(mr.host));
         n_measurements = size.get();
     } else {
         n_measurements = copy.get_size(measurements_view);
@@ -149,7 +148,7 @@ combinatorial_kalman_filter(
     unsigned int n_seeds;
 
     if (mr.host) {
-        const vecmem::async_size size = copy.get_size(seeds, *(mr.host));
+        vecmem::async_size size = copy.get_size(seeds, *(mr.host));
         n_seeds = size.get();
     } else {
         n_seeds = copy.get_size(seeds);
@@ -562,7 +561,7 @@ combinatorial_kalman_filter(
     unsigned int n_tips_total;
 
     if (mr.host) {
-        const vecmem::async_size size = copy.get_size(tips_buffer, *(mr.host));
+        vecmem::async_size size = copy.get_size(tips_buffer, *(mr.host));
         n_tips_total = size.get();
     } else {
         n_tips_total = copy.get_size(tips_buffer);
