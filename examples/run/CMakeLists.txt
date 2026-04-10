@@ -18,6 +18,7 @@ add_library(traccc_examples_common STATIC
    "common/throughput_st.hpp"
    "common/throughput_st.ipp"
    "common/await_strategy.hpp"
+   "common/event_sync_strategy.hpp"
    )
 target_link_libraries(traccc_examples_common
    PUBLIC traccc::core traccc::options
