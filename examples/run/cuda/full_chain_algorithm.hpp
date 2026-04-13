@@ -7,9 +7,10 @@
 
 #pragma once
 
-// Project includes(s).
+// Local includes(s).
 #include "../common/await_strategy.hpp"
 #include "../common/event_sync_strategy.hpp"
+#include "traccc/examples/utils/threadpool.hpp"
 
 // Project include(s).
 #include "traccc/clusterization/clustering_config.hpp"
@@ -43,18 +44,12 @@
 
 // System include(s).
 #include <memory>
+#include <optional>
 
 namespace traccc::cuda {
-
-class await_strategy_helper {
-    public:
-    await_strategy_helper(
-        await_strategy await_mode = await_strategy::sync_event);
-    await_function_t get_await_function() const noexcept;
-
-    private:
-    await_function_t m_await = default_await_function;
-};
+await_function_t get_await_function(
+    await_strategy await_mode,
+    std::optional<traccc::threadpool>& service_threadpool);
 
 /// Algorithm performing the full chain of track reconstruction
 ///
@@ -98,8 +93,9 @@ class full_chain_algorithm
         const silicon_detector_description::host& det_descr,
         const magnetic_field& field, host_detector* detector,
         std::unique_ptr<const traccc::Logger> logger,
+        std::optional<traccc::threadpool>& service_threadpool,
         event_sync_strategy event_sync = event_sync_strategy::spin,
-        await_strategy_helper await_func_helper = await_strategy_helper());
+        await_strategy await_mode = await_strategy::sync_event);
 
     /// Copy constructor
     ///

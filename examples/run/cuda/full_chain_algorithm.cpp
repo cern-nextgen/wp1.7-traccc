@@ -38,21 +38,16 @@
 
 namespace traccc::cuda {
 
-await_strategy_helper::await_strategy_helper(await_strategy await_mode) {
+await_function_t get_await_function(await_strategy await_mode,
+                                    std::optional<traccc::threadpool>&) {
     switch (await_mode) {
         case await_strategy::sync_stream:
-            m_await = await_stream_sync;
-            break;
+            return await_stream_sync;
         case await_strategy::sync_event:
-            m_await = await_event_sync;
-            break;
+            return await_event_sync;
         default:
             throw std::invalid_argument("Unknown await strategy");
     }
-}
-traccc::cuda::await_function_t await_strategy_helper::get_await_function()
-    const noexcept {
-    return m_await;
 }
 
 full_chain_algorithm::full_chain_algorithm(
@@ -67,9 +62,10 @@ full_chain_algorithm::full_chain_algorithm(
     const silicon_detector_description::host& det_descr,
     const magnetic_field& field, host_detector* detector,
     std::unique_ptr<const traccc::Logger> logger,
-    event_sync_strategy event_sync, await_strategy_helper await_func_helper)
+    std::optional<traccc::threadpool>& service_threadpool,
+    event_sync_strategy event_sync, await_strategy await_mode)
     : messaging(logger->clone()),
-      m_await_function(await_func_helper.get_await_function()),
+      m_await_function(get_await_function(await_mode, service_threadpool)),
       m_host_mr(host_mr),
       m_pinned_host_mr(),
       m_cached_pinned_host_mr(m_pinned_host_mr),

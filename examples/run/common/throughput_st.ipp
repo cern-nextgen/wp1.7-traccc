@@ -9,6 +9,7 @@
 
 // Local include(s).
 #include "make_magnetic_field.hpp"
+#include "traccc/examples/utils/threadpool.hpp"
 
 // Project include(s)
 #include "traccc/geometry/detector.hpp"
@@ -140,12 +141,15 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
         fitting_opts);
     fitting_cfg.propagation = propagation_config;
 
+    // Setup placeholder for service threadpool.
+    auto service_threadpool = std::optional<traccc::threadpool>{};
+
     // Set up the full-chain algorithm.
     std::unique_ptr<FULL_CHAIN_ALG> alg = std::make_unique<FULL_CHAIN_ALG>(
         host_mr, clustering_cfg, seedfinder_config, spacepoint_grid_config,
         seedfilter_config, track_params_estimation_config, finding_cfg,
         fitting_cfg, det_descr, field, &detector,
-        logger().clone("FullChainAlg"));
+        logger().clone("FullChainAlg"), service_threadpool);
 
     // Seed the random number generator.
     if (throughput_opts.random_seed == 0) {

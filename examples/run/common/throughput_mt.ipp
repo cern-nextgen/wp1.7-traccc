@@ -11,6 +11,7 @@
 #include "await_strategy.hpp"
 #include "event_sync_strategy.hpp"
 #include "make_magnetic_field.hpp"
+#include "traccc/examples/utils/threadpool.hpp"
 
 // Project include(s)
 #include "traccc/geometry/detector.hpp"
@@ -66,6 +67,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace traccc {
@@ -178,6 +180,24 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     for (std::size_t i = 0; i < threading_opts.concurrent_slots; ++i) {
         concurrent_slots.push(i);
     }
+    // Setup service thread pool if needed.
+    auto service_threadpool = std::optional<traccc::threadpool>{};
+    if (threading_opts.service_threads > 0) {
+        auto wait_policy = [&]() {
+            switch (threading_opts.service_threads_mode) {
+                case opts::threading::service_threads_strategy::spin:
+                    return traccc::threadpool::wait_policy::spin;
+                case opts::threading::service_threads_strategy::yield:
+                    return traccc::threadpool::wait_policy::yield;
+                case opts::threading::service_threads_strategy::block:
+                    return traccc::threadpool::wait_policy::block;
+                default:
+                    throw std::invalid_argument(
+                        "Unknown service threads strategy");
+            }
+        }();
+        service_threadpool.emplace(threading_opts.service_threads, wait_policy);
+    }
 
     // Determine the await strategy to use.
     auto await_mode = [&]() {
@@ -205,11 +225,11 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     std::vector<FULL_CHAIN_ALG> algs;
     algs.reserve(threading_opts.concurrent_slots + 1);
     for (std::size_t i = 0; i < threading_opts.concurrent_slots + 1; ++i) {
-        algs.push_back({host_mr, clustering_cfg, seedfinder_config,
-                        spacepoint_grid_config, seedfilter_config,
-                        track_params_estimation_config, finding_cfg,
-                        fitting_cfg, det_descr, field, &detector,
-                        logger().clone(), event_sync_mode, await_mode});
+        algs.push_back(
+            {host_mr, clustering_cfg, seedfinder_config, spacepoint_grid_config,
+             seedfilter_config, track_params_estimation_config, finding_cfg,
+             fitting_cfg, det_descr, field, &detector, logger().clone(),
+             service_threadpool, event_sync_mode, await_mode});
     }
 
     // Set up a lambda that calls the correct function on the algorithms.
