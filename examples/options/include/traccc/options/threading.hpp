@@ -29,6 +29,15 @@ class threading : public interface {
         suspend_poll       ///< Suspending with polling on an event
     };
 
+    enum class service_threads_strategy {
+        spin,   ///< Service threads will spin while waiting for work
+        yield,  ///< Service threads will yield while waiting for work
+        block   ///< Service threads will block while waiting for work
+    };
+
+    service_threads_strategy service_threads_mode =
+        service_threads_strategy::spin;
+
     await_strategy await_mode = await_strategy::sync_event;
 
     /// The number of threads to use for the data processing
@@ -36,6 +45,9 @@ class threading : public interface {
 
     /// The number of events that can  be processed concurrently
     std::size_t concurrent_slots = 1;
+
+    /// The number of threads to use for service tasks (e.g. event polling)
+    std::size_t service_threads = 1;
 
     /// @}
 

@@ -25,6 +25,11 @@ using await_strategy_type = std::string;
 /// Name of the await strategy option
 static const char* await_strategy_option = "await-strategy";
 
+/// Type alias for the service thread strategy enumeration
+using service_threads_strategy_type = std::string;
+/// Name of the service thread strategy option
+static const char* service_threads_strategy_option = "service-threads-strategy";
+
 threading::threading() : interface("Multi-Threading Options") {
 
     m_desc.add_options()(
@@ -39,7 +44,15 @@ threading::threading() : interface("Multi-Threading Options") {
         boost::program_options::value<std::string>()->default_value(
             "sync-event"),
         "The await strategy to use (\"sync-event\", \"sync-stream\", "
-        "\"suspend-callback\", or \"suspend-poll\")");
+        "\"suspend-callback\", or \"suspend-poll\")")(
+        "service-threads",
+        boost::program_options::value(&service_threads)
+            ->default_value(service_threads),
+        "The number of threads to use for service tasks (e.g. event polling)")(
+        service_threads_strategy_option,
+        boost::program_options::value<std::string>()->default_value("spin"),
+        "The strategy to use for service threads (\"spin\", \"yield\", or "
+        "\"block\")");
 }
 
 void threading::read(const boost::program_options::variables_map& vm) {
@@ -72,6 +85,21 @@ void threading::read(const boost::program_options::variables_map& vm) {
                                         await_string};
         }
     }
+    if (vm.count(service_threads_strategy_option)) {
+        const std::string service_threads_strategy_string =
+            vm[service_threads_strategy_option]
+                .as<service_threads_strategy_type>();
+        if (service_threads_strategy_string == "spin") {
+            service_threads_mode = service_threads_strategy::spin;
+        } else if (service_threads_strategy_string == "yield") {
+            service_threads_mode = service_threads_strategy::yield;
+        } else if (service_threads_strategy_string == "block") {
+            service_threads_mode = service_threads_strategy::block;
+        } else {
+            throw std::invalid_argument{"Unknown service thread strategy: " +
+                                        service_threads_strategy_string};
+        }
+    }
 }
 
 std::unique_ptr<configuration_printable> threading::as_printable() const {
@@ -96,12 +124,33 @@ std::unique_ptr<configuration_printable> threading::as_printable() const {
             break;
     }
 
+    std::string service_threads_strategy_string;
+    switch (service_threads_mode) {
+        case service_threads_strategy::spin:
+            service_threads_strategy_string = "spin";
+            break;
+        case service_threads_strategy::yield:
+            service_threads_strategy_string = "yield";
+            break;
+        case service_threads_strategy::block:
+            service_threads_strategy_string = "block";
+            break;
+        default:
+            service_threads_strategy_string = "unknown";
+            break;
+    }
+
     cat->add_child(std::make_unique<configuration_kv_pair>("Await strategy",
                                                            await_string));
     cat->add_child(std::make_unique<configuration_kv_pair>(
         "Number of CPU thread", std::to_string(threads)));
     cat->add_child(std::make_unique<configuration_kv_pair>(
         "Number of concurrent slots", std::to_string(concurrent_slots)));
+    cat->add_child(std::make_unique<configuration_kv_pair>(
+        "Number of service threads", std::to_string(service_threads)));
+    cat->add_child(std::make_unique<configuration_kv_pair>(
+        "Service threads policy", service_threads_strategy_string));
+
     return cat;
 }
 
