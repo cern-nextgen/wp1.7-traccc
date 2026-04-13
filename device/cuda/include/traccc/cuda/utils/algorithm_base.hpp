@@ -44,7 +44,8 @@ class algorithm_base {
 
 };  // class algorithm_base
 
-using await_function_t = void (*)(const cuda::stream&, vecmem::abstract_event&);
+using await_function_t =
+    std::function<void(const cuda::stream&, vecmem::abstract_event&)>;
 
 // Default await function, same as await_event_sync
 void default_await_function(const cuda::stream& stream,
