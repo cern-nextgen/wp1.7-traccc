@@ -51,7 +51,7 @@ class threading : public interface {
     std::size_t concurrent_slots = 1;
 
     /// The number of threads to use for service tasks (e.g. event polling)
-    std::size_t service_threads = 1;
+    std::size_t service_threads = 0;
 
     /// @}
 
