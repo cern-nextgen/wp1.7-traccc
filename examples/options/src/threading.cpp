@@ -44,7 +44,7 @@ threading::threading() : interface("Multi-Threading Options") {
         boost::program_options::value<std::string>()->default_value(
             "sync-event"),
         "The await strategy to use (\"sync-event\", \"sync-stream\", "
-        "\"suspend-callback\", or \"suspend-poll\")")(
+        "\"callback\", \"poll\", \"defer-sync-event\", \"defer-sync-stream\")")(
         "service-threads",
         boost::program_options::value(&service_threads)
             ->default_value(service_threads),
@@ -76,10 +76,14 @@ void threading::read(const boost::program_options::variables_map& vm) {
             await_mode = await_strategy::sync_event;
         } else if (await_string == "sync-stream") {
             await_mode = await_strategy::sync_stream;
-        } else if (await_string == "suspend-callback") {
-            await_mode = await_strategy::suspend_callback;
-        } else if (await_string == "suspend-poll") {
-            await_mode = await_strategy::suspend_poll;
+        } else if (await_string == "callback") {
+            await_mode = await_strategy::callback;
+        } else if (await_string == "poll") {
+            await_mode = await_strategy::poll;
+        } else if (await_string == "defer-sync-event") {
+            await_mode = await_strategy::defer_sync_event;
+        } else if (await_string == "defer-sync-stream") {
+            await_mode = await_strategy::defer_sync_stream;
         } else {
             throw std::invalid_argument{"Unknown await strategy: " +
                                         await_string};
@@ -113,11 +117,17 @@ std::unique_ptr<configuration_printable> threading::as_printable() const {
         case await_strategy::sync_stream:
             await_string = "synchronous (stream)";
             break;
-        case await_strategy::suspend_callback:
+        case await_strategy::callback:
             await_string = "suspending (stream callback)";
             break;
-        case await_strategy::suspend_poll:
+        case await_strategy::poll:
             await_string = "suspending (event polling)";
+            break;
+        case await_strategy::defer_sync_event:
+            await_string = "suspending (deferred event synchronization)";
+            break;
+        case await_strategy::defer_sync_stream:
+            await_string = "suspending (deferred stream synchronization)";
             break;
         default:
             await_string = "unknown";
