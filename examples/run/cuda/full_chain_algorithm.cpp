@@ -57,6 +57,12 @@ await_function_t get_await_function(
             return tbb_await_defer_sync_stream{threadpool.value()};
         case traccc::await_strategy::boost_fiber_callback:
             return boost_fiber_await_callback;
+        case traccc::await_strategy::boost_fiber_poll:
+            return boost_fiber_await_poll{threadpool.value()};
+        case traccc::await_strategy::boost_fiber_defer_sync_event:
+            return boost_fiber_await_defer_sync_event{threadpool.value()};
+        case traccc::await_strategy::boost_fiber_defer_sync_stream:
+            return boost_fiber_await_defer_sync_stream{threadpool.value()};
         default:
             throw std::invalid_argument("Unknown await strategy");
     }
