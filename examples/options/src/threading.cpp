@@ -11,6 +11,7 @@
 #include "traccc/examples/utils/printable.hpp"
 
 // System include(s).
+#include <ostream>
 #include <stdexcept>
 
 namespace traccc::opts {
@@ -162,6 +163,40 @@ std::unique_ptr<configuration_printable> threading::as_printable() const {
         "Service threads policy", service_threads_strategy_string));
 
     return cat;
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         const threading::await_strategy& opts) {
+    switch (opts) {
+        case threading::await_strategy::sync_event:
+            return os << "sync-event";
+        case threading::await_strategy::sync_stream:
+            return os << "sync-stream";
+        case threading::await_strategy::callback:
+            return os << "callback";
+        case threading::await_strategy::poll:
+            return os << "poll";
+        case threading::await_strategy::defer_sync_event:
+            return os << "defer-sync-event";
+        case threading::await_strategy::defer_sync_stream:
+            return os << "defer-sync-stream";
+        default:
+            return os << "unknown";
+    }
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         const threading::service_threads_strategy& opts) {
+    switch (opts) {
+        case threading::service_threads_strategy::spin:
+            return os << "spin";
+        case threading::service_threads_strategy::yield:
+            return os << "yield";
+        case threading::service_threads_strategy::block:
+            return os << "block";
+        default:
+            return os << "unknown";
+    }
 }
 
 }  // namespace traccc::opts

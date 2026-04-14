@@ -10,6 +10,9 @@
 // Project include(s).
 #include "traccc/options/details/interface.hpp"
 
+// System include(s).
+#include <ostream>
+
 namespace traccc::opts {
 
 /// Option(s) for device configuration
@@ -48,5 +51,10 @@ class device : public interface {
 
     std::unique_ptr<configuration_printable> as_printable() const override;
 };  // struct device
+
+std::ostream& operator<<(std::ostream& os,
+                         const device::event_sync_strategy& opts);
+std::ostream& operator<<(std::ostream& os,
+                         const device::device_sync_strategy& opts);
 
 }  // namespace traccc::opts

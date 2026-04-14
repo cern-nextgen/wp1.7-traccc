@@ -11,6 +11,7 @@
 #include "traccc/examples/utils/printable.hpp"
 
 // System include(s).
+#include <ostream>
 #include <stdexcept>
 
 namespace traccc::opts {
@@ -111,6 +112,34 @@ std::unique_ptr<configuration_printable> device::as_printable() const {
     cat->add_child(std::make_unique<configuration_kv_pair>(
         "Device synchronization strategy", device_sync_string));
     return cat;
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         const device::event_sync_strategy& opts) {
+    switch (opts) {
+        case device::event_sync_strategy::spin:
+            return os << "spin";
+        case device::event_sync_strategy::block:
+            return os << "block";
+        default:
+            return os << "unknown";
+    }
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         const device::device_sync_strategy& opts) {
+    switch (opts) {
+        case device::device_sync_strategy::automatic:
+            return os << "automatic";
+        case device::device_sync_strategy::spin:
+            return os << "spin";
+        case device::device_sync_strategy::yield:
+            return os << "yield";
+        case device::device_sync_strategy::block:
+            return os << "block";
+        default:
+            return os << "unknown";
+    }
 }
 
 }  // namespace traccc::opts

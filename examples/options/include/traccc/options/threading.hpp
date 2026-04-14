@@ -12,6 +12,7 @@
 
 // System include(s).
 #include <cstddef>
+#include <ostream>
 
 namespace traccc::opts {
 
@@ -66,5 +67,10 @@ class threading : public interface {
 
     std::unique_ptr<configuration_printable> as_printable() const override;
 };  // struct threading
+
+std::ostream& operator<<(std::ostream& os,
+                         const threading::await_strategy& opts);
+std::ostream& operator<<(std::ostream& os,
+                         const threading::service_threads_strategy& opts);
 
 }  // namespace traccc::opts
