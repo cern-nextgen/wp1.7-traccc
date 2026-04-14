@@ -40,8 +40,8 @@
 
 namespace traccc::cuda {
 
-await_function_t get_await_function(await_strategy await_mode,
-                                    std::optional<traccc::threadpool>&) {
+await_function_t get_await_function(
+    await_strategy await_mode, std::optional<traccc::threadpool>& threadpool) {
     switch (await_mode) {
         case await_strategy::sync_stream:
             return await_stream_sync;
@@ -49,6 +49,12 @@ await_function_t get_await_function(await_strategy await_mode,
             return await_event_sync;
         case traccc::await_strategy::tbb_callback:
             return tbb_await_callback;
+        case traccc::await_strategy::tbb_poll:
+            return tbb_await_poll{threadpool.value()};
+        case traccc::await_strategy::tbb_defer_sync_event:
+            return tbb_await_defer_sync_event{threadpool.value()};
+        case traccc::await_strategy::tbb_defer_sync_stream:
+            return tbb_await_defer_sync_stream{threadpool.value()};
         case traccc::await_strategy::boost_fiber_callback:
             return boost_fiber_await_callback;
         default:
