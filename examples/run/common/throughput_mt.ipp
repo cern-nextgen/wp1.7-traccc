@@ -374,14 +374,37 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
 
     // Print results to log file
     if (throughput_opts.log_file != "\0") {
-        std::ofstream logFile;
-        logFile.open(throughput_opts.log_file, std::fstream::app);
-        logFile << "\"" << input_opts.directory << "\""
-                << "," << threading_opts.threads << "," << input_opts.events
-                << "," << throughput_opts.cold_run_events << ","
-                << throughput_opts.processed_events << ","
-                << times.get_time("Warm-up processing").count() << ","
-                << times.get_time("Event processing").count() << std::endl;
+        auto& filename = throughput_opts.log_file;
+
+        auto infile = std::ifstream(filename, std::ios::ate | std::ios::binary);
+        auto isEmpty = true;
+        if (infile) {
+            isEmpty = (infile.tellg() == 0);
+        }
+        infile.close();
+
+        auto logFile = std::ofstream(filename, std::ios::app);
+        if (isEmpty) {
+            logFile
+                << "directory,threads,loaded_events,cold_run_events,processed_"
+                   "events,"
+                   "warm_up_time,processing_time,concurrent_slots,await_mode,"
+                   "device_sync,event_sync,service_threads_mode,service_"
+                   "threads\n";
+        }
+
+        logFile << '\"' << input_opts.directory << '\"' << ','
+                << threading_opts.threads << ',' << input_opts.events << ','
+                << throughput_opts.cold_run_events << ','
+                << throughput_opts.processed_events << ','
+                << times.get_time("Warm-up processing").count() << ','
+                << times.get_time("Event processing").count() << ','
+                << threading_opts.concurrent_slots << ','
+                << threading_opts.await_mode << ','
+                << device_opts.device_sync_mode << ','
+                << device_opts.event_sync_mode << ','
+                << threading_opts.service_threads_mode << ','
+                << threading_opts.service_threads << std::endl;
         logFile.close();
     }
 
