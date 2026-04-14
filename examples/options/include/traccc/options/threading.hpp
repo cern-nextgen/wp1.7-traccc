@@ -25,9 +25,22 @@ class threading : public interface {
     enum class await_strategy {
         sync_event,        ///< Synchronous waiting on an event
         sync_stream,       ///< Synchronous waiting on a stream
-        suspend_callback,  ///< Suspending on a stream with a callback
-        suspend_poll       ///< Suspending with polling on an event
+        callback,          ///< Suspending on a stream with a callback
+        poll,              ///< Suspending with polling on an event
+        defer_sync_event,  ///< Suspending and deferring event synchronization
+                           ///< to a service threadpool
+        defer_sync_stream  ///< Suspending and deferring stream synchronization
+                           ///< to a service threadpool
     };
+
+    enum class service_threads_strategy {
+        spin,   ///< Service threads will spin while waiting for work
+        yield,  ///< Service threads will yield while waiting for work
+        block   ///< Service threads will block while waiting for work
+    };
+
+    service_threads_strategy service_threads_mode =
+        service_threads_strategy::spin;
 
     await_strategy await_mode = await_strategy::sync_event;
 
@@ -36,6 +49,9 @@ class threading : public interface {
 
     /// The number of events that can  be processed concurrently
     std::size_t concurrent_slots = 1;
+
+    /// The number of threads to use for service tasks (e.g. event polling)
+    std::size_t service_threads = 0;
 
     /// @}
 

@@ -10,6 +10,7 @@
 // Local include(s).
 #include "../common/await_strategy.hpp"
 #include "../common/event_sync_strategy.hpp"
+#include "traccc/examples/utils/threadpool.hpp"
 
 // Project include(s).
 #include "traccc/bfield/magnetic_field.hpp"
@@ -36,6 +37,7 @@
 // System include(s).
 #include <functional>
 #include <memory>
+#include <optional>
 
 namespace traccc {
 
@@ -84,6 +86,7 @@ class full_chain_algorithm
         const silicon_detector_description::host& det_descr,
         const magnetic_field& field, const host_detector* detector,
         std::unique_ptr<const traccc::Logger> logger,
+        std::optional<traccc::threadpool>& service_threadpool,
         event_sync_strategy event_sync = event_sync_strategy::spin,
         await_strategy = await_strategy::sync_event);
 

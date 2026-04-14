@@ -7,4 +7,5 @@
 # Declare tests related to the example code.
 traccc_add_test( examples
    "test_options.cpp"
+   "test_threadpool.cpp"
    LINK_LIBRARIES GTest::gtest_main traccc_tests_common traccc::options )
