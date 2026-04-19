@@ -2,14 +2,15 @@
 #include "await_exec.hpp"
 
 // Project include(s).
+#include "traccc/cuda/utils/algorithm_base.hpp"
 #include "traccc/cuda/utils/stream.hpp"
 #include "traccc/execution/task.hpp"
 
 // CUDA includes(s).
 #include <cuda_runtime_api.h>
-#include <driver_types.h>
 
 // Stdexec include(s).
+#include <exec/repeat_effect_until.hpp>
 #include <stdexec/execution.hpp>
 
 #define CUDA_ERROR_CHECK(EXP)                                                  \
@@ -79,10 +80,29 @@ class stream_await_sender::stream_await_operation {
 
 static_assert(stdexec::sender<stream_await_sender>);
 
+task<void> await_poll::operator()(const cuda::stream&,
+                                  vecmem::abstract_event& event) const {
+    auto query_once = stdexec::just() |
+                      stdexec::then([&event]() { return event.is_ready(); });
+    co_await exec::repeat_effect_until(stdexec::starts_on(
+        threadpool_scheduler{threadpool}, std::move(query_once)));
+}
+
 task<void> await_callback(const cuda::stream& stream, vecmem::abstract_event&) {
     auto cuda_stream = static_cast<cudaStream_t>(stream.cudaStream());
     CUDA_ERROR_CHECK(co_await stream_await_sender{cuda_stream});
     co_return;
 }
 
+task<void> await_defer_event_sync::operator()(
+    const cuda::stream& stream, vecmem::abstract_event& event) const {
+    co_await stdexec::starts_on(threadpool_scheduler{threadpool},
+                                await_event_sync(stream, event));
+}
+
+task<void> await_defer_stream_sync::operator()(
+    const cuda::stream& stream, vecmem::abstract_event& event) const {
+    co_await stdexec::starts_on(threadpool_scheduler{threadpool},
+                                await_stream_sync(stream, event));
+}
 }  // namespace traccc::cuda
