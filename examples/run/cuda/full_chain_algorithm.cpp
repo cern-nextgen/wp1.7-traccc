@@ -49,8 +49,6 @@ await_function_t get_await_function(
             return await_event_sync;
         case await_strategy::callback:
             return await_callback;
-        case await_strategy::poll:
-            return await_poll{threadpool.value()};
         case traccc::await_strategy::defer_sync_event:
             return await_defer_event_sync{threadpool.value()};
         case traccc::await_strategy::defer_sync_stream:

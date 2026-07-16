@@ -24,7 +24,7 @@ task_arena_scheduler::env task_arena_scheduler::sender::get_env()
     return env{m_arena};
 }
 
-static_assert(stdexec::scheduler<task_arena_scheduler>,
+static_assert(beman::execution::scheduler<task_arena_scheduler>,
               "task_arena_scheduler should model scheduler");
 
 }  // namespace traccc

@@ -9,4 +9,4 @@ traccc_add_library( traccc_utils utils TYPE SHARED
   "src/threadpool.cpp"
 )
 
-target_link_libraries(traccc_utils PUBLIC TBB::tbb STDEXEC::stdexec)
+target_link_libraries(traccc_utils PUBLIC TBB::tbb beman::task)

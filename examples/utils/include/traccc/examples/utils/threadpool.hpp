@@ -10,8 +10,8 @@
 // Tbb include(s).
 #include <tbb/concurrent_queue.h>
 
-// Stdexec include(s).
-#include <exec/task.hpp>
+// beman.task include(s).
+#include <beman/task/task.hpp>
 
 // System include(s).
 #include <functional>
@@ -71,10 +71,10 @@ class threadpool {
 
 std::ostream& operator<<(std::ostream& os, threadpool::wait_policy policy);
 
-/// Wrapper around a threadpool to be used as a scheduler for stdexec.
+/// Wrapper around a threadpool to be used as a scheduler for beman.execution.
 class threadpool_scheduler {
     public:
-    using scheduler_concept = stdexec::scheduler_t;
+    using scheduler_concept = beman::execution::scheduler_t;
 
     /// Construct a threadpool_scheduler that uses the given threadpool.
     /// @param threadpool The threadpool to use for scheduling.
@@ -90,8 +90,8 @@ class threadpool_scheduler {
         env(threadpool* pool) noexcept;
 
         template <typename T>
-        auto query(
-            const stdexec::get_completion_scheduler_t<T>&) const noexcept {
+        auto query(const beman::execution::get_completion_scheduler_t<T>&)
+            const noexcept {
             return threadpool_scheduler{*m_threadpool};
         }
 
@@ -99,18 +99,19 @@ class threadpool_scheduler {
         threadpool* m_threadpool;  /// non-owning pointer to the threadpool
     };
 
-    template <stdexec::receiver Receiver>
+    template <beman::execution::receiver Receiver>
     class operation {
         public:
-        using operation_state_concept = stdexec::operation_state_t;
+        using operation_state_concept = beman::execution::operation_state_t;
 
         operation(Receiver&& receiver, threadpool* pool) noexcept
             : m_receiver(std::forward<Receiver>(receiver)),
               m_threadpool(pool) {}
 
         void start() & noexcept {
-            m_threadpool->enqueue(
-                [this]() { stdexec::set_value(std::move(m_receiver)); });
+            m_threadpool->enqueue([this]() {
+                beman::execution::set_value(std::move(m_receiver));
+            });
         }
 
         private:
@@ -120,14 +121,14 @@ class threadpool_scheduler {
 
     class sender {
         public:
-        using sender_concept = stdexec::sender_t;
-        using completion_signatures =
-            stdexec::completion_signatures<stdexec::set_value_t()>;
+        using sender_concept = beman::execution::sender_t;
+        using completion_signatures = beman::execution::completion_signatures<
+            beman::execution::set_value_t()>;
 
         sender(threadpool* pool) noexcept;
         env get_env() const noexcept;
 
-        template <stdexec::receiver Receiver>
+        template <beman::execution::receiver Receiver>
         auto connect(Receiver&& receiver) {
             return operation<Receiver>(std::forward<Receiver>(receiver),
                                        m_threadpool);

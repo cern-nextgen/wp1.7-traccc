@@ -23,7 +23,7 @@ add_library(traccc_examples_common STATIC
    "common/task_arena_scheduler.cpp"
    )
 target_link_libraries(traccc_examples_common
-   PUBLIC traccc::core traccc::options STDEXEC::stdexec TBB::tbb
+   PUBLIC traccc::core traccc::options beman::task TBB::tbb
    PRIVATE traccc::io)
 
 # Add all the subdirectories that can be built.

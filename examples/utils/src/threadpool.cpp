@@ -110,7 +110,7 @@ threadpool_scheduler::env threadpool_scheduler::sender::get_env()
     return env{m_threadpool};
 }
 
-static_assert(stdexec::scheduler<threadpool_scheduler>,
+static_assert(beman::execution::scheduler<threadpool_scheduler>,
               "threadpool_scheduler should model scheduler");
 
 }  // namespace traccc

@@ -421,23 +421,23 @@ if( TRACCC_SETUP_INDICATORS )
    endif()
 endif()
 
-# Set up stdexec.
-option( TRACCC_SETUP_STDEXEC
-   "Set up the stdexec target(s) explicitly" TRUE )
+# Set up beman.task.
+option( TRACCC_SETUP_BEMAN_TASK
+   "Set up the beman.task target(s) explicitly" TRUE )
 if (TRACCC_USE_SYSTEM_LIBS OR TRACCC_USE_SPACK_LIBS)
-   set(TRACCC_USE_SYSTEM_STDEXEC_DEFAULT ON)
+   set(TRACCC_USE_SYSTEM_BEMAN_TASK_DEFAULT ON)
 else()
-   set(TRACCC_USE_SYSTEM_STDEXEC_DEFAULT OFF)
+   set(TRACCC_USE_SYSTEM_BEMAN_TASK_DEFAULT OFF)
 endif()
-option( TRACCC_USE_SYSTEM_STDEXEC
-   "Pick up an existing installation of stdexec from the build environment"
-   ${TRACCC_USE_SYSTEM_STDEXEC_DEFAULT} )
-unset(TRACCC_USE_SYSTEM_STDEXEC_DEFAULT)
-if( TRACCC_SETUP_STDEXEC )
-   if( TRACCC_USE_SYSTEM_STDEXEC )
-      find_package( stdexec REQUIRED )
+option( TRACCC_USE_SYSTEM_BEMAN_TASK
+   "Pick up an existing installation of beman.task from the build environment"
+   ${TRACCC_USE_SYSTEM_BEMAN_TASK_DEFAULT} )
+unset(TRACCC_USE_SYSTEM_BEMAN_TASK_DEFAULT)
+if( TRACCC_SETUP_BEMAN_TASK )
+   if( TRACCC_USE_SYSTEM_BEMAN_TASK )
+      find_package( beman.task REQUIRED )
    else()
-      add_subdirectory( extern/stdexec )
+      add_subdirectory( extern/beman_task )
    endif()
 endif()
 
@@ -493,4 +493,4 @@ if( BUILD_TESTING AND TRACCC_BUILD_TESTING )
 endif()
 
 # Set up the packaging of the project.
-include( traccc-packaging )
+# include( traccc-packaging )

@@ -57,8 +57,8 @@
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
 
-// Stdexec include(s).
-#include <exec/async_scope.hpp>
+// beman.execution include(s).
+#include <beman/execution/execution.hpp>
 
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
@@ -76,6 +76,19 @@
 #include <vector>
 
 namespace traccc {
+
+auto sched_spawn(auto scheduler, auto&& sender, auto&& token) {
+    auto work = beman::execution::starts_on(
+        scheduler, std::forward<decltype(sender)>(sender));
+    return beman::execution::spawn(
+        beman::execution::write_env(
+            std::move(work) | beman::execution::upon_error([](auto&&) noexcept {
+                std::cerr << "Error" << std::endl;
+            }),
+            beman::execution::detail::make_env(beman::execution::get_scheduler,
+                                               scheduler)),
+        std::forward<decltype(token)>(token));
+}
 
 template <typename FULL_CHAIN_ALG, typename device_config>
 int throughput_mt(std::string_view description, int argc, char* argv[]) {
@@ -214,7 +227,9 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             case opts::threading::await_strategy::callback:
                 return await_strategy::callback;
             case opts::threading::await_strategy::poll:
-                return await_strategy::poll;
+                throw std::invalid_argument(
+                    "Poll await strategy is not supported with "
+                    "beman.execution");
             case opts::threading::await_strategy::defer_sync_event:
                 return await_strategy::defer_sync_event;
             case opts::threading::await_strategy::defer_sync_stream:
@@ -272,7 +287,6 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         threading_opts.threads + 1);
     tbb::task_arena arena{static_cast<int>(threading_opts.threads), 0};
     auto scheduler = task_arena_scheduler{arena};
-    auto scope = exec::async_scope{};
 
     // Seed the random number generator.
     if (throughput_opts.random_seed == 0u) {
@@ -299,6 +313,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         // Measure the time of execution.
         performance::timer t{"Warm-up processing", times};
 
+        auto scope = beman::execution::counting_scope{};
         // Process the requested number of events.
         for (std::size_t i = 0; i < throughput_opts.cold_run_events; ++i) {
 
@@ -322,14 +337,14 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                 queue_.push(slot_);
             };
             // Launch the processing of the event.
-            scope.spawn(stdexec::starts_on(
-                scheduler,
-                payload(algs, input, progress_bar, rec_track_params,
-                        concurrent_slots, event, slot, process_event)));
+            sched_spawn(scheduler,
+                        payload(algs, input, progress_bar, rec_track_params,
+                                concurrent_slots, event, slot, process_event),
+                        scope.get_token());
         }
 
         // Wait for all tasks to finish.
-        stdexec::sync_wait(scope.on_empty());
+        beman::execution::sync_wait(scope.join());
     }
 
     // Reset the dummy counter.
@@ -346,6 +361,8 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
 
         // Measure the total time of execution.
         performance::timer t{"Event processing", times};
+
+        auto scope = beman::execution::counting_scope{};
 
         // Process the requested number of events.
         for (std::size_t i = 0; i < throughput_opts.processed_events; ++i) {
@@ -370,14 +387,14 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                 queue_.push(slot_);
             };
             // Launch the processing of the event.
-            scope.spawn(stdexec::starts_on(
-                scheduler,
-                payload(algs, input, progress_bar, rec_track_params,
-                        concurrent_slots, event, slot, process_event)));
+            sched_spawn(scheduler,
+                        payload(algs, input, progress_bar, rec_track_params,
+                                concurrent_slots, event, slot, process_event),
+                        scope.get_token());
         }
 
         // Wait for all tasks to finish.
-        stdexec::sync_wait(scope.on_empty());
+        beman::execution::sync_wait(scope.join());
     }
 
     // Delete the algorithms explicitly before their parent object would go out

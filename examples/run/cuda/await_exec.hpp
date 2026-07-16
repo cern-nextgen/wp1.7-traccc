@@ -14,13 +14,6 @@ namespace traccc::cuda {
 task<void> await_callback(const cuda::stream& stream,
                           vecmem::abstract_event& event);
 
-/// Await CUDA event completion by polling in a service threadpool
-struct await_poll {
-    traccc::threadpool& threadpool;
-    task<void> operator()(const traccc::cuda::stream& stream,
-                          vecmem::abstract_event& event) const;
-};
-
 /// Await CUDA event completion by deferring synchronization to a service
 /// threadpool
 struct await_defer_event_sync {

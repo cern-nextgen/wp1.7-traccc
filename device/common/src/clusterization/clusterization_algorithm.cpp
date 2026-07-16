@@ -41,6 +41,10 @@ clusterization_algorithm::operator()(
                                         clustering_discard_disjoint_set{});
 }
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 task<edm::measurement_collection<default_algebra>::buffer>
 clusterization_algorithm::operator()(
     const edm::silicon_cell_collection::const_view& cells,
@@ -53,7 +57,14 @@ clusterization_algorithm::operator()(
     assert(!djs.has_value());
     co_return std::move(res);
 }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 task<std::pair<edm::measurement_collection<default_algebra>::buffer,
                edm::silicon_cluster_collection::buffer>>
 clusterization_algorithm::operator()(
@@ -67,6 +78,9 @@ clusterization_algorithm::operator()(
     assert(djs.has_value());
     co_return {std::move(res), std::move(*djs)};
 }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 task<std::pair<edm::measurement_collection<default_algebra>::buffer,
                std::optional<edm::silicon_cluster_collection::buffer>>>

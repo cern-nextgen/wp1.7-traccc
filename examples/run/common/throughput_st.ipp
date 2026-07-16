@@ -47,9 +47,8 @@
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
 
-// Stdexec include(s).
-#include <exec/inline_scheduler.hpp>
-#include <stdexec/execution.hpp>
+// beman.execution include(s).
+#include <beman/execution/execution.hpp>
 
 // System include(s).
 #include <cstdlib>
@@ -186,7 +185,7 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
     }
 
     // Set up a scheduler executing the tasks on the current thread.
-    stdexec::inline_scheduler scheduler;
+    beman::execution::inline_scheduler scheduler;
 
     // Dummy count uses output of tp algorithm to ensure the compiler
     // optimisations don't skip any step
@@ -217,8 +216,9 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            auto result = stdexec::sync_wait(stdexec::starts_on(
-                scheduler, process_event(alg.get(), input[event])));
+            auto result =
+                beman::execution::sync_wait(beman::execution::starts_on(
+                    scheduler, process_event(alg.get(), input[event])));
             if (!result.has_value()) {
                 throw std::runtime_error("Task execution failed");
             }
@@ -253,8 +253,9 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            auto result = stdexec::sync_wait(stdexec::starts_on(
-                scheduler, process_event(alg.get(), input[event])));
+            auto result =
+                beman::execution::sync_wait(beman::execution::starts_on(
+                    scheduler, process_event(alg.get(), input[event])));
             if (!result.has_value()) {
                 throw std::runtime_error("Task execution failed");
             }

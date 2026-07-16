@@ -1,10 +1,10 @@
 #pragma once
 
-// Stdexec include(s).
-#include <exec/task.hpp>
+// beman.task include(s).
+#include <beman/task/task.hpp>
 
 namespace traccc {
 
 template <typename T>
-using task = exec::task<T>;
+using task = beman::execution::task<T>;
 }
