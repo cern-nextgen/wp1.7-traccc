@@ -17,9 +17,8 @@
 #include <vecmem/memory/cuda/managed_memory_resource.hpp>
 #include <vecmem/utils/cuda/async_copy.hpp>
 
-// Stdexec include(s).
-#include <exec/inline_scheduler.hpp>
-#include <stdexec/execution.hpp>
+// Beman.execution include(s).
+#include <beman/execution/execution.hpp>
 
 // GTest include(s).
 #include <gtest/gtest.h>
@@ -30,6 +29,7 @@ TEST(CUDAClustering, SingleModule) {
 
     // Memory resource used by the EDM.
     vecmem::cuda::managed_memory_resource mng_mr;
+
     traccc::memory_resource mr{mng_mr};
 
     // Cuda stream
@@ -37,10 +37,17 @@ TEST(CUDAClustering, SingleModule) {
 
     // Cuda copy objects
     vecmem::cuda::async_copy copy{stream.cudaStream()};
-
     // Create cell collection
     traccc::edm::silicon_cell_collection::host cells{mng_mr};
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
     cells.reserve(8u);
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
     cells.push_back({1u, 2u, 1.f, 0.f, 0u});
     cells.push_back({2u, 2u, 1.f, 0.f, 0u});
     cells.push_back({3u, 2u, 1.f, 0.f, 0u});
@@ -64,9 +71,10 @@ TEST(CUDAClustering, SingleModule) {
     traccc::cuda::clusterization_algorithm ca_cuda(mr, copy, stream,
                                                    default_ccl_test_config());
 
-    auto clusterization_results = stdexec::sync_wait(stdexec::starts_on(
-        stdexec::inline_scheduler{},
-        ca_cuda(vecmem::get_data(cells), vecmem::get_data(dd))));
+    auto clusterization_results =
+        beman::execution::sync_wait(beman::execution::starts_on(
+            beman::execution::inline_scheduler{},
+            ca_cuda(vecmem::get_data(cells), vecmem::get_data(dd))));
     ASSERT_TRUE(clusterization_results.has_value());
     auto measurements_buffer =
         std::move(std::get<0>(clusterization_results.value()));

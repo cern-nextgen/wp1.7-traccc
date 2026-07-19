@@ -57,7 +57,7 @@
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
 
-// beman.execution include(s).
+// Beman.execution include(s).
 #include <beman/execution/execution.hpp>
 
 // Indicators include(s).
@@ -330,10 +330,16 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                               auto& rec_track_params_, auto& queue_,
                               size_t event_, size_t slot_,
                               auto& process_event_) -> task<void> {
-                auto result = co_await process_event_(
-                    algs_, static_cast<int>(slot_), input_.at(event_));
-                rec_track_params_.fetch_add(result);
-                progress_bar_.tick();
+                try {
+                    auto result = co_await process_event_(
+                        algs_, static_cast<int>(slot_), input_.at(event_));
+
+                    rec_track_params_.fetch_add(result);
+                    progress_bar_.tick();
+                } catch (...) {
+                    std::cerr << "Event " << event_ << " failed\n";
+                    throw;
+                }
                 queue_.push(slot_);
             };
             // Launch the processing of the event.
@@ -380,10 +386,16 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                               auto& rec_track_params_, auto& queue_,
                               size_t event_, size_t slot_,
                               auto& process_event_) -> task<void> {
-                auto result = co_await process_event_(
-                    algs_, static_cast<int>(slot_), input_.at(event_));
-                rec_track_params_.fetch_add(result);
-                progress_bar_.tick();
+                try {
+                    auto result = co_await process_event_(
+                        algs_, static_cast<int>(slot_), input_.at(event_));
+
+                    rec_track_params_.fetch_add(result);
+                    progress_bar_.tick();
+                } catch (...) {
+                    std::cerr << "Event " << event_ << " failed\n";
+                    throw;
+                }
                 queue_.push(slot_);
             };
             // Launch the processing of the event.

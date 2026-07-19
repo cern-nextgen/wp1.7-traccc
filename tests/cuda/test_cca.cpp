@@ -19,9 +19,8 @@
 #include "traccc/cuda/utils/stream.hpp"
 #include "traccc/geometry/silicon_detector_description.hpp"
 
-// Stdexec include(s).
-#include <exec/inline_scheduler.hpp>
-#include <stdexec/execution.hpp>
+// Beman.execution include(s).
+#include <beman/execution/execution.hpp>
 
 namespace {
 vecmem::host_memory_resource host_mr;
@@ -62,10 +61,11 @@ cca_function_t get_f_with(traccc::clustering_config cfg) {
         copy.setup(cells_buffer)->wait();
         copy(vecmem::get_data(cells), cells_buffer)->wait();
 
-        auto clustering_result = stdexec::sync_wait(stdexec::starts_on(
-            stdexec::inline_scheduler{},
-            cc(cells_buffer, dd_buffer,
-               traccc::device::clustering_keep_disjoint_set{})));
+        auto clustering_result =
+            beman::execution::sync_wait(beman::execution::starts_on(
+                beman::execution::inline_scheduler{},
+                cc(cells_buffer, dd_buffer,
+                   traccc::device::clustering_keep_disjoint_set{})));
         if (!clustering_result.has_value()) {
             throw std::runtime_error("Clusterization algorithm failed");
         }

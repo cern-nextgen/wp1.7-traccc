@@ -47,7 +47,7 @@
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
 
-// beman.execution include(s).
+// Beman.execution include(s).
 #include <beman/execution/execution.hpp>
 
 // System include(s).
@@ -90,11 +90,11 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
 
     // Set up the timing info holder.
     performance::timing_info times;
-
     // Memory resource to use in the test.
     vecmem::host_memory_resource host_mr;
 
     // Construct the detector description object.
+
     traccc::silicon_detector_description::host det_descr{host_mr};
     traccc::io::read_detector_description(
         det_descr, detector_opts.detector_file, detector_opts.digitization_file,
@@ -114,6 +114,10 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
     {
         performance::timer t{"File reading", times};
         // Read the input cells into memory event-by-event.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
         input.reserve(input_opts.events);
         for (std::size_t i = input_opts.skip;
              i < input_opts.skip + input_opts.events; ++i) {
@@ -123,6 +127,9 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                            logger().clone(), &det_descr, input_opts.format,
                            DEDUPLICATE, input_opts.use_acts_geom_source);
         }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
     }
 
     // Algorithm configuration(s).

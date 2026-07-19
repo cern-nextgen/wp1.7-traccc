@@ -3,7 +3,7 @@
 // TBB include(s).
 #include <tbb/task_arena.h>
 
-// beman.execution include(s).
+// Beman.execution include(s).
 #include <beman/execution/execution.hpp>
 
 namespace traccc {
@@ -46,8 +46,8 @@ class task_arena_scheduler {
             : m_receiver(std::forward<Receiver>(receiver)), m_arena(arena) {}
 
         void start() & noexcept {
-            m_arena->enqueue([this]() {
-                beman::execution::set_value(std::move(m_receiver));
+            m_arena->execute([receiver = std::move(m_receiver)]() mutable {
+                beman::execution::set_value(std::move(receiver));
             });
         }
 
@@ -66,7 +66,7 @@ class task_arena_scheduler {
         env get_env() const noexcept;
 
         template <beman::execution::receiver Receiver>
-        auto connect(Receiver&& receiver) {
+        auto connect(Receiver&& receiver) noexcept {
             return operation<Receiver>(std::forward<Receiver>(receiver),
                                        m_arena);
         }
