@@ -9,7 +9,7 @@ cmake_minimum_required( VERSION 3.25 )
 project( traccc VERSION 0.24.0 LANGUAGES CXX )
 
 # Set up the used C++ standard(s).
-set( CMAKE_CXX_STANDARD 20 CACHE STRING "The (host) C++ standard to use" )
+set( CMAKE_CXX_STANDARD 23 CACHE STRING "The (host) C++ standard to use" )
 set( CMAKE_CXX_EXTENSIONS FALSE CACHE BOOL "Disable (host) C++ extensions" )
 set( CMAKE_CUDA_STANDARD 20 CACHE STRING "The (CUDA) C++ standard to use" )
 set( CMAKE_CUDA_EXTENSIONS FALSE CACHE BOOL "Disable (CUDA) C++ extensions" )
