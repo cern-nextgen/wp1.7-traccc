@@ -12,6 +12,7 @@
 #include "traccc/examples/utils/threadpool.hpp"
 
 // Project include(s)
+#include "traccc/execution/task.hpp"
 #include "traccc/geometry/detector.hpp"
 #include "traccc/geometry/host_detector.hpp"
 #include "traccc/seeding/detail/track_params_estimation_config.hpp"
@@ -45,6 +46,9 @@
 
 // Indicators include(s).
 #include <indicators/progress_bar.hpp>
+
+// Beman.execution include(s).
+#include <beman/execution/execution.hpp>
 
 // System include(s).
 #include <cstdlib>
@@ -86,11 +90,11 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
 
     // Set up the timing info holder.
     performance::timing_info times;
-
     // Memory resource to use in the test.
     vecmem::host_memory_resource host_mr;
 
     // Construct the detector description object.
+
     traccc::silicon_detector_description::host det_descr{host_mr};
     traccc::io::read_detector_description(
         det_descr, detector_opts.detector_file, detector_opts.digitization_file,
@@ -110,6 +114,10 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
     {
         performance::timer t{"File reading", times};
         // Read the input cells into memory event-by-event.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
         input.reserve(input_opts.events);
         for (std::size_t i = input_opts.skip;
              i < input_opts.skip + input_opts.events; ++i) {
@@ -119,6 +127,9 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                            logger().clone(), &det_descr, input_opts.format,
                            DEDUPLICATE, input_opts.use_acts_geom_source);
         }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
     }
 
     // Algorithm configuration(s).
@@ -159,17 +170,29 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
     }
 
     // Set up a lambda that calls the correct function on the algorithm.
-    std::function<std::size_t(const edm::silicon_cell_collection::host&)>
+    std::function<task<std::size_t>(FULL_CHAIN_ALG*,
+                                    const edm::silicon_cell_collection::host&)>
         process_event;
     if (throughput_opts.reco_stage == opts::throughput::stage::seeding) {
-        process_event = [&](const edm::silicon_cell_collection::host& cells)
-            -> std::size_t { return alg->seeding(cells).size(); };
+        process_event = [](FULL_CHAIN_ALG* alg_,
+                           const edm::silicon_cell_collection::host& cells_)
+            -> task<std::size_t> {
+            auto result = co_await alg_->seeding(cells_);
+            co_return result.size();
+        };
     } else if (throughput_opts.reco_stage == opts::throughput::stage::full) {
-        process_event = [&](const edm::silicon_cell_collection::host& cells)
-            -> std::size_t { return (*alg)(cells).size(); };
+        process_event = [](FULL_CHAIN_ALG* alg_,
+                           const edm::silicon_cell_collection::host& cells_)
+            -> task<std::size_t> {
+            auto result = co_await (*alg_)(cells_);
+            co_return result.size();
+        };
     } else {
         throw std::invalid_argument("Unknown reconstruction stage");
     }
+
+    // Set up a scheduler executing the tasks on the current thread.
+    beman::execution::inline_scheduler scheduler;
 
     // Dummy count uses output of tp algorithm to ensure the compiler
     // optimisations don't skip any step
@@ -200,7 +223,13 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            rec_track_params += process_event(input[event]);
+            auto result =
+                beman::execution::sync_wait(beman::execution::starts_on(
+                    scheduler, process_event(alg.get(), input[event])));
+            if (!result.has_value()) {
+                throw std::runtime_error("Task execution failed");
+            }
+            rec_track_params += std::get<0>(result.value());
             progress_bar.tick();
         }
     }
@@ -231,7 +260,13 @@ int throughput_st(std::string_view description, int argc, char* argv[]) {
                 input_opts.events;
 
             // Process one event.
-            rec_track_params += process_event(input[event]);
+            auto result =
+                beman::execution::sync_wait(beman::execution::starts_on(
+                    scheduler, process_event(alg.get(), input[event])));
+            if (!result.has_value()) {
+                throw std::runtime_error("Task execution failed");
+            }
+            rec_track_params += std::get<0>(result.value());
             progress_bar.tick();
         }
     }

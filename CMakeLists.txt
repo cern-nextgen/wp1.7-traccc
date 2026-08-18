@@ -9,7 +9,7 @@ cmake_minimum_required( VERSION 3.25 )
 project( traccc VERSION 0.24.0 LANGUAGES CXX )
 
 # Set up the used C++ standard(s).
-set( CMAKE_CXX_STANDARD 20 CACHE STRING "The (host) C++ standard to use" )
+set( CMAKE_CXX_STANDARD 23 CACHE STRING "The (host) C++ standard to use" )
 set( CMAKE_CXX_EXTENSIONS FALSE CACHE BOOL "Disable (host) C++ extensions" )
 set( CMAKE_CUDA_STANDARD 20 CACHE STRING "The (CUDA) C++ standard to use" )
 set( CMAKE_CUDA_EXTENSIONS FALSE CACHE BOOL "Disable (CUDA) C++ extensions" )
@@ -421,6 +421,25 @@ if( TRACCC_SETUP_INDICATORS )
    endif()
 endif()
 
+# Set up beman.task.
+option( TRACCC_SETUP_BEMAN_TASK
+   "Set up the beman.task target(s) explicitly" TRUE )
+if (TRACCC_USE_SYSTEM_LIBS OR TRACCC_USE_SPACK_LIBS)
+   set(TRACCC_USE_SYSTEM_BEMAN_TASK_DEFAULT ON)
+else()
+   set(TRACCC_USE_SYSTEM_BEMAN_TASK_DEFAULT OFF)
+endif()
+option( TRACCC_USE_SYSTEM_BEMAN_TASK
+   "Pick up an existing installation of beman.task from the build environment"
+   ${TRACCC_USE_SYSTEM_BEMAN_TASK_DEFAULT} )
+unset(TRACCC_USE_SYSTEM_BEMAN_TASK_DEFAULT)
+if( TRACCC_SETUP_BEMAN_TASK )
+   if( TRACCC_USE_SYSTEM_BEMAN_TASK )
+      find_package( beman.task REQUIRED )
+   else()
+      add_subdirectory( extern/beman_task )
+   endif()
+endif()
 
 option( TRACCC_ENABLE_NVTX_PROFILING
         "Use instrument functions to enable fine grained profiling" FALSE )
@@ -474,4 +493,4 @@ if( BUILD_TESTING AND TRACCC_BUILD_TESTING )
 endif()
 
 # Set up the packaging of the project.
-include( traccc-packaging )
+# include( traccc-packaging )

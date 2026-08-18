@@ -38,7 +38,14 @@ TEST(algorithms, seq_single_module) {
     cells.push_back({11, 13, 8.f, 0.f, 0});
     cells.push_back({4, 14, 9.f, 0.f, 0});
     traccc::silicon_detector_description::host dd{resource};
+    #if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
     dd.resize(1);
+    #if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
     auto cells_data = vecmem::get_data(cells);
     auto clusters = cc(cells_data);
