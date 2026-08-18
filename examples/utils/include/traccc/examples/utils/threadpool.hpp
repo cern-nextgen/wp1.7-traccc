@@ -67,4 +67,5 @@ class threadpool {
 };
 
 std::ostream& operator<<(std::ostream& os, threadpool::wait_policy policy);
+
 }  // namespace traccc

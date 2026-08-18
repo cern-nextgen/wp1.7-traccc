@@ -91,5 +91,4 @@ std::ostream& operator<<(std::ostream& os, threadpool::wait_policy policy) {
     }
     return os;
 }
-
 }  // namespace traccc

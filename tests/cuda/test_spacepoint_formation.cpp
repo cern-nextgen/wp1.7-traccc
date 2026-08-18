@@ -10,6 +10,7 @@
 #include "traccc/cuda/seeding/silicon_pixel_spacepoint_formation_algorithm.hpp"
 #include "traccc/definitions/common.hpp"
 #include "traccc/edm/spacepoint_collection.hpp"
+#include "traccc/execution/sync_wait.hpp"
 #include "traccc/geometry/detector.hpp"
 
 // VecMem include(s).
@@ -95,7 +96,8 @@ TEST(CUDASpacepointFormation, cuda) {
     traccc::cuda::silicon_pixel_spacepoint_formation_algorithm sp_formation(
         mr, copy, stream);
     auto spacepoints_buffer =
-        sp_formation(device_det, vecmem::get_data(measurements));
+        sync_wait([](std::coroutine_handle<> handle) { handle.resume(); },
+                  sp_formation(device_det, vecmem::get_data(measurements)));
 
     edm::spacepoint_collection::device spacepoints(spacepoints_buffer);
 
