@@ -79,6 +79,8 @@ void threading::read(const boost::program_options::variables_map& vm) {
             await_mode = await_strategy::sync_stream;
         } else if (await_string == "callback") {
             await_mode = await_strategy::callback;
+        } else if (await_string == "callback-spin") {
+            await_mode = await_strategy::callback_spin;
         } else if (await_string == "poll") {
             await_mode = await_strategy::poll;
         } else if (await_string == "defer-sync-event") {
@@ -120,6 +122,9 @@ std::unique_ptr<configuration_printable> threading::as_printable() const {
             break;
         case await_strategy::callback:
             await_string = "suspending (stream callback)";
+            break;
+        case await_strategy::callback_spin:
+            await_string = "suspending (stream callback with spin)";
             break;
         case await_strategy::poll:
             await_string = "suspending (event polling)";
@@ -174,6 +179,8 @@ std::ostream& operator<<(std::ostream& os,
             return os << "sync-stream";
         case threading::await_strategy::callback:
             return os << "callback";
+        case threading::await_strategy::callback_spin:
+            return os << "callback-spin";
         case threading::await_strategy::poll:
             return os << "poll";
         case threading::await_strategy::defer_sync_event:

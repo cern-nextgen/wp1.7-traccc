@@ -24,10 +24,12 @@ class threading : public interface {
     /// @{
 
     enum class await_strategy {
-        sync_event,        ///< Synchronous waiting on an event
-        sync_stream,       ///< Synchronous waiting on a stream
-        callback,          ///< Suspending on a stream with a callback
-        poll,              ///< Suspending with polling on an event
+        sync_event,     ///< Synchronous waiting on an event
+        sync_stream,    ///< Synchronous waiting on a stream
+        callback,       ///< Suspending on a stream with a callback
+        callback_spin,  ///< Suspending on a stream with a callback executed by
+                        ///< a spinning thread
+        poll,           ///< Suspending with polling on an event
         defer_sync_event,  ///< Suspending and deferring event synchronization
                            ///< to a service threadpool
         defer_sync_stream  ///< Suspending and deferring stream synchronization

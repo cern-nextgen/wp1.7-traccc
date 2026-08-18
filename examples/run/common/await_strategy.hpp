@@ -4,9 +4,11 @@ namespace traccc {
 /// Enumeration of await strategies for synchronous or suspending operations
 
 enum class await_strategy {
-    sync_event,    ///< Synchronous waiting on an event
-    sync_stream,   ///< Synchronous waiting on a stream
-    tbb_callback,  ///< Suspend TBB task, use callback
+    sync_event,         ///< Synchronous waiting on an event
+    sync_stream,        ///< Synchronous waiting on a stream
+    tbb_callback,       ///< Suspend TBB task, use callback
+    tbb_callback_spin,  ///< Suspend TBB task, use callback executed by a
+                        ///< spinning thread
     tbb_poll,  ///< Suspend TBB task, poll on an event in a service threadpool
     tbb_defer_sync_event,  ///< Suspend TBB task, defer event synchronization to
                            ///< service threadpool

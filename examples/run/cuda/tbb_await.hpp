@@ -13,6 +13,12 @@ namespace traccc::cuda {
 void tbb_await_callback(const traccc::cuda::stream& stream,
                         vecmem::abstract_event& event);
 
+/// Await CUDA stream completion with callback using TBB task suspension. The
+/// callback is executed by a spinning thread, which should reduce latency at
+/// the cost of higher CPU usage.
+void tbb_await_callback_spin(const traccc::cuda::stream& stream,
+                             vecmem::abstract_event& event);
+
 /// Await CUDA event completion by polling in a service threadpool using TBB
 /// task suspension
 struct tbb_await_poll {

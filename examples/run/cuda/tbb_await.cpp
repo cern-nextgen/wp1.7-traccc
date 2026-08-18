@@ -71,6 +71,31 @@ void tbb_await_callback(const traccc::cuda::stream& stream,
     CUDA_ERROR_CHECK(err);
 }
 
+void tbb_await_callback_spin(const traccc::cuda::stream& stream,
+                             vecmem::abstract_event&) {
+#if CUDART_VERSION >= 13020
+    cudaError_t err = cudaSuccess;
+    tbb::task::suspend_point
+        suspend_point;  // suspension point address must remain valid when
+                        // resumption callback is called
+    tbb::task::suspend([&err, &stream, &suspend_point](auto tag) {
+        suspend_point = tag;
+        auto cuda_stream = reinterpret_cast<cudaStream_t>(stream.cudaStream());
+        err = cudaLaunchHostFunc_v2(cuda_stream, suspend_stream_callback,
+                                    &suspend_point, cudaHostTaskSpinWait);
+        // resume immediately if the callback could not be registered
+        if (err != cudaSuccess) {
+            tbb::task::resume(suspend_point);
+        }
+    });
+    CUDA_ERROR_CHECK(err);
+#else
+    static_cast<void>(stream);
+    throw std::invalid_argument(
+        "TBB callback_spin await strategy requires CUDA 13.2 or later");
+#endif
+}
+
 void tbb_await_poll::operator()(const traccc::cuda::stream&,
                                 vecmem::abstract_event& event) const {
     std::exception_ptr exception = nullptr;

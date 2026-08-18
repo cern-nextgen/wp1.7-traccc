@@ -216,6 +216,10 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                 return await_strategy::sync_stream;
             case opts::threading::await_strategy::callback:
                 return await_strategy::boost_fiber_callback;
+            case opts::threading::await_strategy::callback_spin:
+                throw std::invalid_argument(
+                    "Boost.Fiber does not support callback_spin await "
+                    "strategy");
             case opts::threading::await_strategy::poll:
                 return await_strategy::boost_fiber_poll;
             case opts::threading::await_strategy::defer_sync_event:
@@ -235,6 +239,8 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                 return await_strategy::sync_stream;
             case opts::threading::await_strategy::callback:
                 return await_strategy::tbb_callback;
+            case opts::threading::await_strategy::callback_spin:
+                return await_strategy::tbb_callback_spin;
             case opts::threading::await_strategy::poll:
                 return await_strategy::tbb_poll;
             case opts::threading::await_strategy::defer_sync_event:

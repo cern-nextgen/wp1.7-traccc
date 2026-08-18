@@ -49,6 +49,13 @@ await_function_t get_await_function(
             return await_event_sync;
         case traccc::await_strategy::tbb_callback:
             return tbb_await_callback;
+        case traccc::await_strategy::tbb_callback_spin:
+#if CUDART_VERSION >= 13020
+            return tbb_await_callback_spin;
+#else
+            throw std::invalid_argument(
+                "TBB callback_spin await strategy requires CUDA 13.2 or later");
+#endif
         case traccc::await_strategy::tbb_poll:
             return tbb_await_poll{threadpool.value()};
         case traccc::await_strategy::tbb_defer_sync_event:
