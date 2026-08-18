@@ -17,6 +17,10 @@
 #include <vecmem/memory/cuda/managed_memory_resource.hpp>
 #include <vecmem/utils/cuda/async_copy.hpp>
 
+// Stdexec include(s).
+#include <exec/inline_scheduler.hpp>
+#include <stdexec/execution.hpp>
+
 // GTest include(s).
 #include <gtest/gtest.h>
 
@@ -60,8 +64,12 @@ TEST(CUDAClustering, SingleModule) {
     traccc::cuda::clusterization_algorithm ca_cuda(mr, copy, stream,
                                                    default_ccl_test_config());
 
+    auto clusterization_results = stdexec::sync_wait(stdexec::starts_on(
+        stdexec::inline_scheduler{},
+        ca_cuda(vecmem::get_data(cells), vecmem::get_data(dd))));
+    ASSERT_TRUE(clusterization_results.has_value());
     auto measurements_buffer =
-        ca_cuda(vecmem::get_data(cells), vecmem::get_data(dd));
+        std::move(std::get<0>(clusterization_results.value()));
 
     edm::measurement_collection<default_algebra>::const_device measurements(
         measurements_buffer);

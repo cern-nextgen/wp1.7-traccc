@@ -54,7 +54,7 @@ class silicon_pixel_spacepoint_formation_algorithm
 
     /// @}
 
-    void await(vecmem::abstract_event& event) const override;
+    task<void> await(vecmem::abstract_event& event) const override;
 
     private:
     await_function_t m_await_function;
