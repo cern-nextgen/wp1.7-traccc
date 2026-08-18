@@ -10,6 +10,9 @@
 // Tbb include(s).
 #include <tbb/concurrent_queue.h>
 
+// Boost.Capy include(s).
+#include <boost/capy.hpp>
+
 // System include(s).
 #include <functional>
 #include <ostream>
@@ -67,4 +70,47 @@ class threadpool {
 };
 
 std::ostream& operator<<(std::ostream& os, threadpool::wait_policy policy);
+
+class threadpool_executor {
+
+    public:
+    class threadpool_context : public boost::capy::execution_context {
+        public:
+        threadpool_context(threadpool& pool) : m_threadpool(&pool) {}
+
+        void schedule(std::coroutine_handle<> h) const {
+            m_threadpool->enqueue([h]() { h.resume(); });
+        }
+        bool operator==(const threadpool_context& other) const noexcept {
+            return m_threadpool == other.m_threadpool;
+        }
+
+        private:
+        threadpool* m_threadpool;
+    };
+
+    threadpool_executor(threadpool_context& context) noexcept
+        : m_context(&context) {
+        static_assert(boost::capy::Executor<threadpool_executor>,
+                      "threadpool_executor should be a valid capy Executor");
+    }
+
+    threadpool_executor(threadpool_executor const&) noexcept = default;
+
+    std::coroutine_handle<> dispatch(std::coroutine_handle<> h) const {
+        m_context->schedule(h);
+        return std::noop_coroutine();
+    }
+    void post(std::coroutine_handle<> h) const { m_context->schedule(h); }
+    threadpool_context& context() const noexcept { return *m_context; }
+    void on_work_started() const noexcept {}
+    void on_work_finished() const noexcept {}
+    bool operator==(const threadpool_executor& other) const noexcept {
+        return m_context == other.m_context;
+    }
+
+    private:
+    threadpool_context* m_context;
+};
+
 }  // namespace traccc

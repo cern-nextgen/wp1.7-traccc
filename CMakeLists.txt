@@ -421,6 +421,25 @@ if( TRACCC_SETUP_INDICATORS )
    endif()
 endif()
 
+# Set up Boost.Capy.
+option( TRACCC_SETUP_CAPY
+   "Set up the Boost.Capy target(s) explicitly" TRUE )
+if (TRACCC_USE_SYSTEM_LIBS OR TRACCC_USE_SPACK_LIBS)
+   set(TRACCC_USE_SYSTEM_CAPY_DEFAULT ON)
+else()
+   set(TRACCC_USE_SYSTEM_CAPY_DEFAULT OFF)
+endif()
+option( TRACCC_USE_SYSTEM_CAPY
+   "Pick up an existing installation of capy from the build environment"
+   ${TRACCC_USE_SYSTEM_CAPY_DEFAULT} )
+unset(TRACCC_USE_SYSTEM_CAPY_DEFAULT)
+if( TRACCC_SETUP_CAPY )
+   if( TRACCC_USE_SYSTEM_CAPY )
+      find_package( capy REQUIRED )
+   else()
+      add_subdirectory( extern/capy )
+   endif()
+endif()
 
 option( TRACCC_ENABLE_NVTX_PROFILING
         "Use instrument functions to enable fine grained profiling" FALSE )
