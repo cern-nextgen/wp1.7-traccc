@@ -10,6 +10,8 @@
 
 #include "../common/await_strategy.hpp"
 #include "../common/event_sync_strategy.hpp"
+#include "boost_fiber_await.hpp"
+#include "tbb_await.hpp"
 
 // Project include(s).
 #include "traccc/cuda/utils/algorithm_base.hpp"
@@ -38,13 +40,36 @@
 
 namespace traccc::cuda {
 
-await_function_t get_await_function(await_strategy await_mode,
-                                    std::optional<traccc::threadpool>&) {
+await_function_t get_await_function(
+    await_strategy await_mode, std::optional<traccc::threadpool>& threadpool) {
     switch (await_mode) {
         case await_strategy::sync_stream:
             return await_stream_sync;
         case await_strategy::sync_event:
             return await_event_sync;
+        case traccc::await_strategy::tbb_callback:
+            return tbb_await_callback;
+        case traccc::await_strategy::tbb_callback_spin:
+#if CUDART_VERSION >= 13020
+            return tbb_await_callback_spin;
+#else
+            throw std::invalid_argument(
+                "TBB callback_spin await strategy requires CUDA 13.2 or later");
+#endif
+        case traccc::await_strategy::tbb_poll:
+            return tbb_await_poll{threadpool.value()};
+        case traccc::await_strategy::tbb_defer_sync_event:
+            return tbb_await_defer_sync_event{threadpool.value()};
+        case traccc::await_strategy::tbb_defer_sync_stream:
+            return tbb_await_defer_sync_stream{threadpool.value()};
+        case traccc::await_strategy::boost_fiber_callback:
+            return boost_fiber_await_callback;
+        case traccc::await_strategy::boost_fiber_poll:
+            return boost_fiber_await_poll{threadpool.value()};
+        case traccc::await_strategy::boost_fiber_defer_sync_event:
+            return boost_fiber_await_defer_sync_event{threadpool.value()};
+        case traccc::await_strategy::boost_fiber_defer_sync_stream:
+            return boost_fiber_await_defer_sync_stream{threadpool.value()};
         default:
             throw std::invalid_argument("Unknown await strategy");
     }

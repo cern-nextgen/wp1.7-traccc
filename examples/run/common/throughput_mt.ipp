@@ -8,6 +8,10 @@
 #pragma once
 
 // Local include(s).
+
+#ifdef TRACCC_THROUGHPUT_MT_BOOST_FIBER
+#include "fiber_pool.hpp"
+#endif
 #include "await_strategy.hpp"
 #include "event_sync_strategy.hpp"
 #include "make_magnetic_field.hpp"
@@ -69,6 +73,9 @@
 #include <memory>
 #include <optional>
 #include <vector>
+#ifdef TRACCC_THROUGHPUT_MT_BOOST_FIBER
+#include <latch>
+#endif
 
 namespace traccc {
 
@@ -200,6 +207,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
     }
 
     // Determine the await strategy to use.
+#ifdef TRACCC_THROUGHPUT_MT_BOOST_FIBER
     auto await_mode = [&]() {
         switch (threading_opts.await_mode) {
             case opts::threading::await_strategy::sync_event:
@@ -207,15 +215,43 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             case opts::threading::await_strategy::sync_stream:
                 return await_strategy::sync_stream;
             case opts::threading::await_strategy::callback:
-            case opts::threading::await_strategy::poll:
-            case opts::threading::await_strategy::defer_sync_event:
-            case opts::threading::await_strategy::defer_sync_stream:
+                return await_strategy::boost_fiber_callback;
+            case opts::threading::await_strategy::callback_spin:
                 throw std::invalid_argument(
-                    "Suspending await strategies are not supported");
+                    "Boost.Fiber does not support callback_spin await "
+                    "strategy");
+            case opts::threading::await_strategy::poll:
+                return await_strategy::boost_fiber_poll;
+            case opts::threading::await_strategy::defer_sync_event:
+                return await_strategy::boost_fiber_defer_sync_event;
+            case opts::threading::await_strategy::defer_sync_stream:
+                return await_strategy::boost_fiber_defer_sync_stream;
             default:
                 throw std::invalid_argument("Unknown await strategy");
         }
     }();
+#else
+    auto await_mode = [&]() {
+        switch (threading_opts.await_mode) {
+            case opts::threading::await_strategy::sync_event:
+                return await_strategy::sync_event;
+            case opts::threading::await_strategy::sync_stream:
+                return await_strategy::sync_stream;
+            case opts::threading::await_strategy::callback:
+                return await_strategy::tbb_callback;
+            case opts::threading::await_strategy::callback_spin:
+                return await_strategy::tbb_callback_spin;
+            case opts::threading::await_strategy::poll:
+                return await_strategy::tbb_poll;
+            case opts::threading::await_strategy::defer_sync_event:
+                return await_strategy::tbb_defer_sync_event;
+            case opts::threading::await_strategy::defer_sync_stream:
+                return await_strategy::tbb_defer_sync_stream;
+            default:
+                throw std::invalid_argument("Unknown await strategy");
+        }
+    }();
+#endif
 
     // Determine the event synchronization strategy to use.
     traccc::event_sync_strategy event_sync_mode =
@@ -255,6 +291,9 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         throw std::invalid_argument("Unknown reconstruction stage");
     }
 
+#ifdef TRACCC_THROUGHPUT_MT_BOOST_FIBER
+    fiber_pool fibers{static_cast<int>(threading_opts.threads)};
+#else
     // Set up the TBB arena and thread group. From here on out TBB is only
     // allowed to use the specified number of threads.
     tbb::global_control global_thread_limit(
@@ -262,6 +301,7 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         threading_opts.threads + 1);
     tbb::task_arena arena{static_cast<int>(threading_opts.threads), 0};
     tbb::task_group group;
+#endif
 
     // Seed the random number generator.
     if (throughput_opts.random_seed == 0u) {
@@ -288,6 +328,10 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
         // Measure the time of execution.
         performance::timer t{"Warm-up processing", times};
 
+#ifdef TRACCC_THROUGHPUT_MT_BOOST_FIBER
+        std::latch latch{
+            static_cast<std::ptrdiff_t>(throughput_opts.cold_run_events)};
+#endif
         // Process the requested number of events.
         for (std::size_t i = 0; i < throughput_opts.cold_run_events; ++i) {
 
@@ -301,6 +345,16 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             size_t slot = std::numeric_limits<size_t>::max();
             concurrent_slots.pop(slot);
             // Launch the processing of the event.
+
+#ifdef TRACCC_THROUGHPUT_MT_BOOST_FIBER
+            fibers.enqueue([&, event, slot]() {
+                rec_track_params.fetch_add(
+                    process_event(static_cast<int>(slot), input[event]));
+                progress_bar.tick();
+                concurrent_slots.push(slot);
+                latch.count_down();
+            });
+#else
             arena.execute([&, event, slot]() {
                 group.run([&, event, slot]() {
                     rec_track_params.fetch_add(
@@ -309,10 +363,15 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                     concurrent_slots.push(slot);
                 });
             });
+#endif
         }
 
         // Wait for all tasks to finish.
+#ifdef TRACCC_THROUGHPUT_MT_BOOST_FIBER
+        latch.wait();
+#else
         group.wait();
+#endif
     }
 
     // Reset the dummy counter.
@@ -329,6 +388,10 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
 
         // Measure the total time of execution.
         performance::timer t{"Event processing", times};
+#ifdef TRACCC_THROUGHPUT_MT_BOOST_FIBER
+        std::latch latch{
+            static_cast<std::ptrdiff_t>(throughput_opts.processed_events)};
+#endif
 
         // Process the requested number of events.
         for (std::size_t i = 0; i < throughput_opts.processed_events; ++i) {
@@ -343,6 +406,16 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
             size_t slot = std::numeric_limits<size_t>::max();
             concurrent_slots.pop(slot);
             // Launch the processing of the event.
+
+#ifdef TRACCC_THROUGHPUT_MT_BOOST_FIBER
+            fibers.enqueue([&, event, slot]() {
+                rec_track_params.fetch_add(
+                    process_event(static_cast<int>(slot), input[event]));
+                progress_bar.tick();
+                concurrent_slots.push(slot);
+                latch.count_down();
+            });
+#else
             arena.execute([&, event, slot]() {
                 group.run([&, event, slot]() {
                     rec_track_params.fetch_add(
@@ -351,10 +424,15 @@ int throughput_mt(std::string_view description, int argc, char* argv[]) {
                     concurrent_slots.push(slot);
                 });
             });
+#endif
         }
 
         // Wait for all tasks to finish.
+#ifdef TRACCC_THROUGHPUT_MT_BOOST_FIBER
+        latch.wait();
+#else
         group.wait();
+#endif
     }
 
     // Delete the algorithms explicitly before their parent object would go out
